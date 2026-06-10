@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Progress } from "@/components/ui/progress"
 
 interface StepDataTableProps {
   onNext: () => void
@@ -122,17 +123,58 @@ const PRODUCTS = [
   "Rode PodMic USB",
 ]
 
-function generateData(): DataRow[] {
-  return PRODUCTS.map((product, i) => ({
-    id: i + 1,
-    product,
-    price: "",
-    status: "ожидает" as const,
-  }))
-}
+const BATCH_SIZE = 5
+const BATCH_DELAY_MS = 40
 
 export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
-  const [data] = React.useState<DataRow[]>(() => generateData())
+  const [data, setData] = React.useState<DataRow[]>([])
+  const [isFilling, setIsFilling] = React.useState(false)
+  const [isFilled, setIsFilled] = React.useState(false)
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+
+  const fillProgress = Math.round((data.length / PRODUCTS.length) * 100)
+
+  const handleFillData = React.useCallback(() => {
+    if (isFilling) return
+    setIsFilling(true)
+    setData([])
+    setIsFilled(false)
+
+    let batchIndex = 0
+
+    const interval = setInterval(() => {
+      const start = batchIndex * BATCH_SIZE
+      const end = Math.min(start + BATCH_SIZE, PRODUCTS.length)
+      const newRows: DataRow[] = []
+
+      for (let i = start; i < end; i++) {
+        newRows.push({
+          id: i + 1,
+          product: PRODUCTS[i],
+          price: "",
+          status: "ожидает" as const,
+        })
+      }
+
+      setData((prev) => [...prev, ...newRows])
+      batchIndex++
+
+      if (end >= PRODUCTS.length) {
+        clearInterval(interval)
+        setIsFilling(false)
+        setIsFilled(true)
+      }
+    }, BATCH_DELAY_MS)
+  }, [isFilling])
+
+  React.useEffect(() => {
+    if (isFilling && scrollRef.current) {
+      const scrollEl = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]")
+      if (scrollEl) {
+        scrollEl.scrollTop = scrollEl.scrollHeight
+      }
+    }
+  }, [data, isFilling])
 
   const statusColor: Record<string, string> = {
     "ожидает": "bg-gray-500/15 text-gray-600 dark:text-gray-400",
@@ -151,6 +193,15 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         Тестовые данные для обработки — 100 товаров. ИИ-агент будет брать название из колонки A, искать цену через браузер и заполнять результат.
       </p>
 
+      {(isFilling || (isFilled && data.length > 0)) && (
+        <div className="flex items-center gap-3">
+          <Progress value={fillProgress} className="flex-1" />
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {data.length}/{PRODUCTS.length} строк
+          </span>
+        </div>
+      )}
+
       <Card className="min-h-0 flex-1">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-sm">
@@ -159,34 +210,67 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-h-0 pb-0">
-          <ScrollArea className="h-[440px]">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-card">
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="w-12 px-3 py-2 font-medium">#</th>
-                  <th className="px-3 py-2 font-medium">A — Название товара</th>
-                  <th className="w-36 px-3 py-2 font-medium">B — Цена</th>
-                  <th className="w-28 px-3 py-2 font-medium">C — Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row) => (
-                  <tr key={row.id} className="border-b transition-colors hover:bg-muted/50">
-                    <td className="px-3 py-2 text-muted-foreground">{row.id}</td>
-                    <td className="px-3 py-2 font-medium">{row.product}</td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {row.price || "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}>
-                        {row.status}
-                      </span>
-                    </td>
+          {data.length === 0 && !isFilling ? (
+            <div className="flex h-[440px] flex-col items-center justify-center gap-4 text-muted-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+                  <path d="M14 2v6h6" />
+                  <path d="M8 13h2" />
+                  <path d="M14 13h2" />
+                  <path d="M8 17h2" />
+                  <path d="M14 17h2" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">Нет данных</p>
+                <p className="text-xs">Нажмите кнопку ниже, чтобы заполнить таблицу</p>
+              </div>
+            </div>
+          ) : (
+            <ScrollArea ref={scrollRef} className="h-[440px]">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="w-12 px-3 py-2 font-medium">#</th>
+                    <th className="px-3 py-2 font-medium">A — Название товара</th>
+                    <th className="w-36 px-3 py-2 font-medium">B — Цена</th>
+                    <th className="w-28 px-3 py-2 font-medium">C — Статус</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollArea>
+                </thead>
+                <tbody>
+                  {data.map((row, index) => (
+                    <tr
+                      key={row.id}
+                      className="border-b transition-colors hover:bg-muted/50 animate-[rowSlideIn_0.3s_ease-out_both]"
+                      style={{ animationDelay: `${(index % BATCH_SIZE) * 30}ms` }}
+                    >
+                      <td className="px-3 py-2 text-muted-foreground">{row.id}</td>
+                      <td className="px-3 py-2 font-medium">{row.product}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {row.price || "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollArea>
+          )}
         </CardContent>
       </Card>
 
@@ -194,9 +278,23 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         <Button variant="outline" onClick={onBack}>
           ← Назад
         </Button>
-        <Button size="lg" className="gap-2" onClick={onNext}>
-          🚀 Запусти агента
-        </Button>
+        <div className="flex gap-2">
+          {!isFilled && (
+            <Button
+              size="lg"
+              className="gap-2"
+              onClick={handleFillData}
+              disabled={isFilling}
+            >
+              {isFilling ? "Заполнение..." : "Заполнить данные"}
+            </Button>
+          )}
+          {isFilled && (
+            <Button size="lg" className="gap-2" onClick={onNext}>
+              Начать обработку
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

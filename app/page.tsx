@@ -11,28 +11,28 @@ type Step = 1 | 2 | 3 | 4
 
 const STEP_TITLES: Record<Step, string> = {
   1: "Создание агента",
-  2: "Структура mim.lua",
+  2: "ИИ-агент",
   3: "Таблица данных",
   4: "Обработка агентом",
 }
 
 const STEP_ICONS: Record<Step, string> = {
   1: "💬",
-  2: "📄",
+  2: "🤖",
   3: "📊",
   4: "🤖",
 }
 
 const STEP_SLUGS: Record<Step, string> = {
   1: "chat",
-  2: "mim-lua",
+  2: "ai-agent",
   3: "data",
   4: "processing",
 }
 
 const SLUG_TO_STEP: Record<string, Step> = {
   chat: 1,
-  "mim-lua": 2,
+  "ai-agent": 2,
   data: 3,
   processing: 4,
 }
@@ -97,7 +97,7 @@ export default function Page() {
         </div>
       </nav>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col min-h-0 px-6 py-6">
         {step === 1 && <StepChat onComplete={() => goToStep(2)} />}
         {step === 2 && (
           <StepMimLua
