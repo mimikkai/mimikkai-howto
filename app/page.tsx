@@ -8,6 +8,7 @@ import "@/lib/cases/price-search"
 import "@/lib/cases/threads-comments"
 import "@/lib/cases/email-outreach"
 import "@/lib/cases/ticket-reply"
+import "@/lib/cases/crm-order-tracking"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 
