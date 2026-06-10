@@ -24,7 +24,15 @@ const CASES: CaseConfig[] = [
     slug: "price-search",
     title: "Поиск цен",
     description: "Агент находит цены товаров, переходя на сайты магазинов",
-    icon: "💰",
+    icon: "🛍️",
+    available: true,
+  },
+  {
+    slug: "threads-comments",
+    title: "Комментирование в Threads",
+    description:
+      "Агент находит посты об AI в Threads и оставляет нативные комментарии",
+    icon: "📣",
     available: true,
   },
   {
@@ -49,14 +57,6 @@ const CASES: CaseConfig[] = [
     description: "ИИ-агент отвечает на обращения клиентов в системе поддержки",
     icon: "🎫",
     available: false,
-  },
-  {
-    slug: "threads-comments",
-    title: "Комментирование в Threads",
-    description:
-      "Агент находит посты об AI в Threads и оставляет нативные комментарии",
-    icon: "🧵",
-    available: true,
   },
 ]
 
