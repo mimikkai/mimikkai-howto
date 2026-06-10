@@ -183,7 +183,7 @@ function PageContent() {
                     <span className="hidden sm:inline">{STEP_TITLES[s]}</span>
                     <span className="sm:hidden">{s}</span>
                   </button>
-                </React.Fragment>
+                </Fragment>
               ))}
             </div>
           </div>
