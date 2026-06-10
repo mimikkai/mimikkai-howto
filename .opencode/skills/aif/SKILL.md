@@ -564,7 +564,7 @@ Use the canonical server templates below as the source values, then wrap them us
 }
 ```
 
-#### Playwright
+#### Веб-браузер
 **When:** Needs browser automation, web testing, interaction via accessibility tree
 
 ```json

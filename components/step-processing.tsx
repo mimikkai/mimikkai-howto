@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 interface StepProcessingProps {
   caseSlug: string
@@ -271,6 +278,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const [agentPane, setAgentPane] = React.useState<0 | 1 | 2>(0)
   const [tableFlash, setTableFlash] = React.useState(false)
   const [chatFading, setChatFading] = React.useState(false)
+  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | null>(null)
 
   const setAgentActivePane = React.useCallback((pane: 0 | 1 | 2) => {
     setAgentPane(pane)
@@ -1106,7 +1114,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                       return (
                         <tr
                           key={row.id}
-                          className={`border-b transition-all duration-300 ${
+                          className={`cursor-pointer border-b transition-all duration-300 ${
                             justUpdated
                               ? "bg-emerald-500/20 shadow-sm"
                               : isActive
@@ -1115,13 +1123,20 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                                   ? "bg-emerald-500/5"
                                   : "hover:bg-muted/50"
                           }`}
+                          onClick={() => setSelectedRow(row)}
                         >
                           <td className="px-1 py-1 text-muted-foreground">
                             {row.id}
                           </td>
                           <td className="px-1 py-1 font-medium">{row.date}</td>
                           <td className="hidden max-w-[100px] truncate px-1 py-1 text-muted-foreground lg:table-cell">
-                            {row.postUrl || "—"}
+                            {row.postUrl ? (
+                              <span className="text-blue-600 dark:text-blue-400">
+                                ссылка
+                              </span>
+                            ) : (
+                              "—"
+                            )}
                           </td>
                           <td className="hidden max-w-[120px] truncate px-1 py-1 text-muted-foreground sm:table-cell">
                             {row.postText || "—"}
@@ -1295,7 +1310,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
               <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
                 {isThreads
                   ? browser.phase === "idle"
-                    ? "ИИ-агент управляет браузером через MCP Playwright для комментирования в Threads"
+                    ? "ИИ-агент управляет браузером для комментирования в Threads"
                     : browser.phase.startsWith("threads_search")
                       ? "ИИ-агент ищет посты по теме AI в Threads"
                       : browser.phase === "threads_feed" ||
@@ -1311,7 +1326,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                                 ? "ИИ-агент проверяет опубликованный комментарий на ИИ-маркеры"
                                 : "ИИ-агент записывает результат в таблицу"
                   : browser.phase === "idle"
-                    ? "ИИ-агент управляет браузером через MCP Playwright для поиска цен"
+                    ? "ИИ-агент управляет браузером для поиска цен"
                     : browser.phase === "typing" ||
                         browser.phase === "google_loading"
                       ? "ИИ-агент вводит поисковый запрос в Google"
@@ -2030,7 +2045,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                       : "text-muted-foreground/50"
                   }
                 >
-                  {browser.phase !== "idle" ? "●" : "○"} MCP Playwright
+                  {browser.phase !== "idle" ? "●" : "○"} Веб-браузер
                 </span>
                 <span>
                   {browser.phase !== "idle"
@@ -2119,6 +2134,57 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             </div>
           )}
         </div>
+      )}
+
+      {isThreads && selectedRow && (
+        <Dialog
+          open={!!selectedRow}
+          onOpenChange={(open) => {
+            if (!open) setSelectedRow(null)
+          }}
+        >
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Строка {selectedRow.id}
+              </DialogTitle>
+              <DialogDescription>
+                Данные выбранной строки таблицы
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              {[
+                { id: "A", label: "Дата", value: selectedRow.date },
+                { id: "B", label: "Ссылка на пост", value: selectedRow.postUrl },
+                { id: "C", label: "Текст поста", value: selectedRow.postText },
+                { id: "D", label: "Комментарий", value: selectedRow.comment },
+                { id: "E", label: "Статус", value: selectedRow.status },
+              ].map((col) => (
+                <div key={col.id} className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {col.id} — {col.label}
+                  </span>
+                  {col.id === "B" && col.value ? (
+                    <a
+                      href={col.value}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-sm text-blue-600 underline dark:text-blue-400"
+                    >
+                      {col.value}
+                    </a>
+                  ) : col.id === "E" ? (
+                    <ThreadsStatusBadge status={col.value} />
+                  ) : (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {col.value || "—"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

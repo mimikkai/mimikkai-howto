@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
 
 interface StepDataTableProps {
@@ -46,6 +53,7 @@ export function StepDataTable({
   const [isFilling, setIsFilling] = React.useState(false)
   const [isFilled, setIsFilled] = React.useState(false)
   const [lastAddedCount, setLastAddedCount] = React.useState(0)
+  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | null>(null)
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
   const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
@@ -127,6 +135,17 @@ export function StepDataTable({
   }
 
   const columns = caseConfig.dataTable.columns
+
+  const getThreadsColumnValue = (row: ThreadsDataRow, colId: string): string => {
+    switch (colId) {
+      case "A": return row.date
+      case "B": return row.postUrl
+      case "C": return row.postText
+      case "D": return row.comment
+      case "E": return row.status
+      default: return ""
+    }
+  }
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -216,7 +235,7 @@ export function StepDataTable({
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
+                        className={`cursor-pointer border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
                         style={
                           isNew
                             ? {
@@ -224,13 +243,20 @@ export function StepDataTable({
                               }
                             : undefined
                         }
+                        onClick={() => setSelectedRow(row)}
                       >
                         <td className="px-2 py-2 text-muted-foreground">
                           {row.id}
                         </td>
                         <td className="px-2 py-2 font-medium">{row.date}</td>
                         <td className="hidden px-2 py-2 text-muted-foreground lg:table-cell">
-                          {row.postUrl || "—"}
+                          {row.postUrl ? (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              ссылка
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="hidden max-w-[200px] truncate px-2 py-2 text-muted-foreground sm:table-cell">
                           {row.postText || "—"}
@@ -333,6 +359,52 @@ export function StepDataTable({
           )}
         </div>
       </div>
+
+      {isThreads && selectedRow && (
+        <Dialog
+          open={!!selectedRow}
+          onOpenChange={(open) => {
+            if (!open) setSelectedRow(null)
+          }}
+        >
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Строка {selectedRow.id}
+              </DialogTitle>
+              <DialogDescription>
+                Данные выбранной строки таблицы
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              {columns.map((col) => {
+                const value = getThreadsColumnValue(selectedRow, col.id)
+                return (
+                  <div key={col.id} className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {col.id} — {col.label}
+                    </span>
+                    {col.id === "B" && value ? (
+                      <a
+                        href={value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-sm text-blue-600 underline dark:text-blue-400"
+                      >
+                        {value}
+                      </a>
+                    ) : (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {value || "—"}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
