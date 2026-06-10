@@ -53,9 +53,9 @@ const CASES: CaseConfig[] = [
   {
     slug: "threads-comments",
     title: "Комментирование в Threads",
-    description: "Автоматические осмысленные комментарии к постам в Threads",
+    description: "Агент находит посты об AI в Threads и оставляет нативные комментарии",
     icon: "🧵",
-    available: false,
+    available: true,
   },
 ]
 
@@ -233,20 +233,22 @@ function PageContent() {
           </div>
         ) : (
           <>
-            {step === 1 && <StepChat onComplete={() => goToStep(2)} />}
+            {step === 1 && <StepChat caseSlug={caseSlug!} onComplete={() => goToStep(2)} />}
             {step === 2 && (
               <StepMimLua
+                caseSlug={caseSlug!}
                 onNext={() => goToStep(3)}
                 onBack={() => goToStep(1)}
               />
             )}
             {step === 3 && (
               <StepDataTable
+                caseSlug={caseSlug!}
                 onNext={() => goToStep(4)}
                 onBack={() => goToStep(2)}
               />
             )}
-            {step === 4 && <StepProcessing onBack={() => goToStep(3)} />}
+            {step === 4 && <StepProcessing caseSlug={caseSlug!} onBack={() => goToStep(3)} />}
           </>
         )}
        </main>

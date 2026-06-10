@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { CASE_CONFIGS } from "@/lib/case-config"
 
 interface Message {
   role: "user" | "assistant"
@@ -12,26 +13,26 @@ interface Message {
 }
 
 interface StepChatProps {
+  caseSlug: string
   onComplete: (prompt: string) => void
 }
 
-const PRESET_PROMPT = "Я хочу ИИ-агента чтобы он проверял цены в интернете"
+export function StepChat({ caseSlug, onComplete }: StepChatProps) {
+  const caseConfig = CASE_CONFIGS[caseSlug]
 
-const ASSISTANT_GREETING =
-  "Привет! Я помогу создать ИИ-агента на платформе MimikkAi.\n\nВыберите, какого агента вы хотите создать:"
+  const PRESET_PROMPT = caseConfig.chat.presetPrompt
 
-const ASSISTANT_RESPONSE =
-  "Отлично! Создаю ИИ-агента для проверки цен в интернете.\n\nАгент будет:\n\n• Брать название товара из колонки A таблицы\n• Открывать браузер через MCP Playwright\n• Искать актуальную цену на маркетплейсах\n• Записывать найденную цену в колонку B\n• Обновлять статус обработки в колонку C\n\nКонфигурация mim.lua сгенерирована."
+  const ASSISTANT_GREETING = caseConfig.chat.greeting
+  const ASSISTANT_RESPONSE = caseConfig.chat.assistantResponse
 
-const MESSAGE_DURATION_MS = 2000
-const TICK_INTERVAL_MS = 30
+  const MESSAGE_DURATION_MS = 2000
+  const TICK_INTERVAL_MS = 30
 
-function calcCharsPerTick(textLength: number): number {
-  const totalTicks = MESSAGE_DURATION_MS / TICK_INTERVAL_MS
-  return Math.max(1, Math.ceil(textLength / totalTicks))
-}
+  function calcCharsPerTick(textLength: number): number {
+    const totalTicks = MESSAGE_DURATION_MS / TICK_INTERVAL_MS
+    return Math.max(1, Math.ceil(textLength / totalTicks))
+  }
 
-export function StepChat({ onComplete }: StepChatProps) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isTyping, setIsTyping] = React.useState(false)
   const [typedText, setTypedText] = React.useState("")
@@ -264,8 +265,7 @@ export function StepChat({ onComplete }: StepChatProps) {
                     <div>
                       <div className="font-medium">{PRESET_PROMPT}</div>
                       <div className="text-xs text-muted-foreground">
-                        Агент ищет цены на товары через браузер и заполняет
-                        таблицу
+                        {caseConfig.chat.presetPromptDesc}
                       </div>
                     </div>
                   </button>

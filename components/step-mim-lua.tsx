@@ -3,30 +3,17 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CASE_CONFIGS } from "@/lib/case-config"
 
 interface StepMimLuaProps {
+  caseSlug: string
   onNext: () => void
   onBack: () => void
 }
 
-const INPUT_COLUMNS = [
-  { id: "A", label: "Название товара", example: "iPhone 15 Pro Max 256GB" },
-]
-
-const OUTPUT_COLUMNS = [
-  { id: "B", label: "Цена", example: "109 990 ₽" },
-  { id: "C", label: "Статус", example: "найдено" },
-]
-
-const PROMPT_STEPS = [
-  { text: "Открой браузер через MCP Playwright", icon: "🌐" },
-  { text: "Найди товар на маркетплейсах", icon: "🔍" },
-  { text: "Определи актуальную цену", icon: "💰" },
-  { text: "Запиши результат в колонку B", icon: "📝" },
-  { text: "Обнови статус в колонку C", icon: "✅" },
-]
-
-export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
+export function StepMimLua({ caseSlug, onNext, onBack }: StepMimLuaProps) {
+  const caseConfig = CASE_CONFIGS[caseSlug]
+  const { inputColumns, outputColumns, promptSteps, agentTitle, agentDesc, promptIntro } = caseConfig.mimLua
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -40,10 +27,10 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
             🤖
           </span>
           <div>
-            <div className="text-base font-semibold">Поиск цен на товары</div>
-            <div className="text-xs text-muted-foreground">
-              ИИ-агент для поиска актуальных цен через браузер
-            </div>
+          <div className="text-base font-semibold">{agentTitle}</div>
+          <div className="text-xs text-muted-foreground">
+            {agentDesc}
+          </div>
           </div>
         </div>
 
@@ -57,11 +44,10 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
             </div>
             <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
               <p className="text-xs leading-relaxed text-muted-foreground italic">
-                &laquo;Ты — агент для поиска цен на товары в интернете. Для
-                каждого товара выполни шаги ниже.&raquo;
+                {promptIntro}
               </p>
               <div className="space-y-1.5">
-                {PROMPT_STEPS.map((s, i) => (
+                {promptSteps.map((s, i) => (
                   <div key={i} className="flex items-center gap-2.5">
                     <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                       {i + 1}
@@ -94,7 +80,7 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
                       — заполняет пользователь
                     </span>
                   </div>
-                  {INPUT_COLUMNS.map((col) => (
+                  {inputColumns.map((col) => (
                     <div
                       key={col.id}
                       className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2"
@@ -130,7 +116,7 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
                       — заполняет агент
                     </span>
                   </div>
-                  {OUTPUT_COLUMNS.map((col) => (
+                  {outputColumns.map((col) => (
                     <div
                       key={col.id}
                       className="rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2"

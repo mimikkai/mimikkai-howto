@@ -6,168 +6,97 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
+import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
 
 interface StepDataTableProps {
+  caseSlug: string
   onNext: () => void
   onBack: () => void
 }
 
-interface DataRow {
+interface PriceDataRow {
   id: number
   product: string
   price: string
   status: "ожидает" | "обработка" | "найдено" | "не найдено"
 }
 
-const PRODUCTS = [
-  "iPhone 15 Pro Max 256GB",
-  'MacBook Air M3 15"',
-  "Samsung Galaxy S24 Ultra",
-  "PlayStation 5 Slim",
-  "Nintendo Switch OLED",
-  "Xbox Series X",
-  'iPad Pro 11" M4',
-  "AirPods Pro 2",
-  "Dyson V15 Detect",
-  "Sony WH-1000XM5",
-  'LG OLED C4 65"',
-  "Bose QuietComfort Ultra",
-  "Canon EOS R6 Mark II",
-  "GoPro Hero 12 Black",
-  "DJI Mini 4 Pro",
-  "Kindle Paperwhite 5",
-  "Apple Watch Ultra 2",
-  "Samsung Galaxy Watch 6 Classic",
-  "Garmin Fenix 7X Pro",
-  "Meta Quest 3",
-  "Steam Deck OLED",
-  "ROG Ally X",
-  "Razer Blade 16",
-  "ThinkPad X1 Carbon Gen 11",
-  "Surface Pro 10",
-  "Dell XPS 15 9530",
-  "HP Spectre x360 14",
-  "ASUS Zenbook 14 OLED",
-  "Mac Studio M2 Ultra",
-  "Mac mini M2 Pro",
-  "Samsung 990 Pro 2TB",
-  "WD Black SN850X 2TB",
-  "Corsair DDR5 32GB Kit",
-  "NVIDIA RTX 4090",
-  "AMD Ryzen 9 7950X3D",
-  "Intel Core i9-14900K",
-  "ASUS ROG Maximus Z790",
-  "NZXT Kraken Z73 RGB",
-  "Corsair RM1000x",
-  "Fractal Design Torrent",
-  "Sony A7 IV Body",
-  "Fujifilm X-T5",
-  "Nikon Z8",
-  "Sigma 24-70mm f/2.8",
-  "Rode NT1 5th Gen",
-  "Elgato Stream Deck MK.2",
-  "Logitech MX Master 3S",
-  "Keychron Q1 Pro",
-  'Samsung 49" Odyssey G9',
-  'LG 27" UltraFine 5K',
-  "BenQ PD3220U",
-  "ASUS ProArt PA32UCG-K",
-  "Dell U3223QE",
-  "EIZO ColorEdge CG319X",
-  "Raspberry Pi 5 8GB",
-  "Arduino Uno R4 WiFi",
-  "ESP32-S3 DevKit",
-  "Flipper Zero",
-  "Anker 737 Power Bank",
-  "Shargeek 140W Power Bank",
-  "Apple Magic Keyboard",
-  "Logitech MX Keys S",
-  "Razer Huntsman V3 Pro",
-  "SteelSeries Apex Pro TKL",
-  "HyperX Cloud III Wireless",
-  "SteelSeries Arctis Nova Pro",
-  "Sennheiser HD 660S2",
-  "Focal Clear Mg",
-  "iFi Zen DAC V2",
-  "FiiO K7",
-  "Topping DX3 Pro+",
-  "Audio-Technica LP120X",
-  "Pro-Ject Debut Carbon EVO",
-  "KEF LSX II",
-  "Sonos Era 300",
-  "JBL Charge 5",
-  "Marshall Stanmore III",
-  "Bowers & Wilkins Zeppelin",
-  "Nest Hub Max",
-  "Echo Show 10",
-  "Apple HomePod 2",
-  "Ring Doorbell 4",
-  "Philips Hue Starter Kit",
-  "TP-Link Deco XE75 Pro",
-  "Ubiquiti Dream Machine SE",
-  "Synology DS923+",
-  "QNAP TS-464",
-  "WD Red Plus 8TB",
-  "Seagate IronWolf 8TB",
-  "Tesla Model 3 Accessories Kit",
-  "DJI Osmo Pocket 3",
-  "Insta360 X4",
-  "Peak Design Travel Tripod",
-  "Moment MT-24 Lens Filter",
-  "Apple AirTag 4-Pack",
-  "Tile Pro 2-Pack",
-  "Anker 715 PowerPort",
-  "UGREEN 100W USB-C Hub",
-  "CalDigit TS4 Dock",
-  "Elgato Key Light Mini",
-  "Rode PodMic USB",
-]
+interface ThreadsDataRow {
+  id: number
+  date: string
+  postUrl: string
+  postText: string
+  comment: string
+  status: "ожидает" | "обработка" | "Готово"
+}
 
 const BATCH_SIZE = 5
 const BATCH_DELAY_MS = 50
 
-export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
-  const [data, setData] = React.useState<DataRow[]>([])
+export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) {
+  const caseConfig = CASE_CONFIGS[caseSlug]
+  const isThreads = caseSlug === "threads-comments"
+
+  const [priceData, setPriceData] = React.useState<PriceDataRow[]>([])
+  const [threadsData, setThreadsData] = React.useState<ThreadsDataRow[]>([])
   const [isFilling, setIsFilling] = React.useState(false)
   const [isFilled, setIsFilled] = React.useState(false)
   const [lastAddedCount, setLastAddedCount] = React.useState(0)
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
-  const fillProgress = Math.round((data.length / PRODUCTS.length) * 100)
+  const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
+  const dataLength = isThreads ? threadsData.length : priceData.length
+  const fillProgress = Math.round((dataLength / totalRows) * 100)
 
   const handleFillData = React.useCallback(() => {
     if (isFilling) return
     setIsFilling(true)
-    setData([])
+    setPriceData([])
+    setThreadsData([])
     setIsFilled(false)
 
     let batchIndex = 0
 
     const interval = setInterval(() => {
       const start = batchIndex * BATCH_SIZE
-      const end = Math.min(start + BATCH_SIZE, PRODUCTS.length)
-      const newRows: DataRow[] = []
-
-      for (let i = start; i < end; i++) {
-        newRows.push({
-          id: i + 1,
-          product: PRODUCTS[i],
-          price: "",
-          status: "ожидает" as const,
-        })
-      }
-
-      setData((prev) => [...prev, ...newRows])
-      setLastAddedCount(newRows.length)
+      const end = Math.min(start + BATCH_SIZE, totalRows)
       batchIndex++
 
-      if (end >= PRODUCTS.length) {
+      if (isThreads) {
+        const newRows: ThreadsDataRow[] = []
+        for (let i = start; i < end; i++) {
+          newRows.push({
+            id: i + 1,
+            date: THREADS_POSTS[i].date,
+            postUrl: "",
+            postText: "",
+            comment: "",
+            status: "ожидает" as const,
+          })
+        }
+        setThreadsData((prev) => [...prev, ...newRows])
+      } else {
+        const newRows: PriceDataRow[] = []
+        for (let i = start; i < end; i++) {
+          newRows.push({
+            id: i + 1,
+            product: PRODUCTS[i],
+            price: "",
+            status: "ожидает" as const,
+          })
+        }
+        setPriceData((prev) => [...prev, ...newRows])
+      }
+
+      setLastAddedCount(end - start)
+
+      if (end >= totalRows) {
         clearInterval(interval)
         setIsFilling(false)
         setIsFilled(true)
       }
     }, BATCH_DELAY_MS)
-  }, [isFilling])
+  }, [isFilling, isThreads, totalRows])
 
   React.useEffect(() => {
     if (isFilling && scrollRef.current) {
@@ -178,14 +107,22 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         scrollEl.scrollTop = scrollEl.scrollHeight
       }
     }
-  }, [data, isFilling])
+  }, [priceData, threadsData, isFilling])
 
-  const statusColor: Record<string, string> = {
+  const priceStatusColor: Record<string, string> = {
     ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
     обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
     найдено: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     "не найдено": "bg-red-500/15 text-red-700 dark:text-red-400",
   }
+
+  const threadsStatusColor: Record<string, string> = {
+    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
+    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    Готово: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  }
+
+  const columns = caseConfig.dataTable.columns
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -194,15 +131,14 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         <h2 className="text-lg font-semibold">Таблица данных</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Тестовые данные для обработки — 100 товаров. ИИ-агент будет брать
-        название из колонки A, искать цену через браузер и заполнять результат.
+        {caseConfig.dataTable.description}
       </p>
 
-      {(isFilling || (isFilled && data.length > 0)) && (
+      {(isFilling || (isFilled && dataLength > 0)) && (
         <div className="flex items-center gap-3">
           <Progress value={fillProgress} className="flex-1" />
           <span className="text-xs text-muted-foreground tabular-nums">
-            {data.length}/{PRODUCTS.length} строк
+            {dataLength}/{totalRows} строк
           </span>
         </div>
       )}
@@ -212,12 +148,12 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
           <CardTitle className="flex items-center justify-between text-sm">
             <span>Данные для обработки</span>
             <span className="text-xs text-muted-foreground">
-              {data.length} строк
+              {dataLength} строк
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="min-h-0 pb-0">
-          {data.length === 0 && !isFilling ? (
+          {dataLength === 0 && !isFilling ? (
             <div className="flex h-[440px] flex-col items-center justify-center gap-4 text-muted-foreground">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <svg
@@ -240,12 +176,76 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium">Нет данных</p>
+                <p className="text-sm font-medium">{caseConfig.dataTable.emptyTitle}</p>
                 <p className="text-xs">
-                  Нажмите кнопку ниже, чтобы заполнить таблицу
+                  {caseConfig.dataTable.emptyDesc}
                 </p>
               </div>
             </div>
+          ) : isThreads ? (
+            <ScrollArea ref={scrollRef} className="md:h-[440px] h-[calc(100dvh-340px)]">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="w-8 px-2 py-2 font-medium">#</th>
+                    {columns.map((col) => (
+                      <th
+                        key={col.id}
+                        className={`px-2 py-2 font-medium ${
+                          col.id === "C" ? "hidden sm:table-cell" : ""
+                        } ${
+                          col.id === "D" ? "hidden md:table-cell" : ""
+                        } ${
+                          col.id === "B" ? "hidden lg:table-cell w-36" : ""
+                        }`}
+                      >
+                        {col.id} — {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {threadsData.map((row, index) => {
+                    const isNew =
+                      index >= threadsData.length - lastAddedCount && isFilling
+                    return (
+                      <tr
+                        key={row.id}
+                        className={`border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
+                        style={
+                          isNew
+                            ? {
+                                animationDelay: `${(index % BATCH_SIZE) * 40}ms`,
+                              }
+                            : undefined
+                        }
+                      >
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {row.id}
+                        </td>
+                        <td className="px-2 py-2 font-medium">{row.date}</td>
+                        <td className="hidden px-2 py-2 text-muted-foreground lg:table-cell">
+                          {row.postUrl || "—"}
+                        </td>
+                        <td className="hidden px-2 py-2 text-muted-foreground sm:table-cell max-w-[200px] truncate">
+                          {row.postText || "—"}
+                        </td>
+                        <td className="hidden px-2 py-2 text-muted-foreground md:table-cell max-w-[160px] truncate">
+                          {row.comment || "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${threadsStatusColor[row.status]}`}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </ScrollArea>
           ) : (
             <ScrollArea ref={scrollRef} className="md:h-[440px] h-[calc(100dvh-340px)]">
               <table className="w-full text-xs">
@@ -260,9 +260,9 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((row, index) => {
+                  {priceData.map((row, index) => {
                     const isNew =
-                      index >= data.length - lastAddedCount && isFilling
+                      index >= priceData.length - lastAddedCount && isFilling
                     return (
                       <tr
                         key={row.id}
@@ -284,7 +284,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                         </td>
                         <td className="px-3 py-2">
                           <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${priceStatusColor[row.status]}`}
                           >
                             {row.status}
                           </span>
@@ -311,7 +311,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
               onClick={handleFillData}
               disabled={isFilling}
             >
-              {isFilling ? "Заполнение..." : "Заполнить данные"}
+              {isFilling ? "Заполнение..." : caseConfig.dataTable.fillButtonText}
             </Button>
           )}
           {isFilled && (

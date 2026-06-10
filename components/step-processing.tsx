@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
 
 interface StepProcessingProps {
+  caseSlug: string
   onBack: () => void
 }
 
@@ -16,6 +18,15 @@ interface DataRow {
   product: string
   price: string
   status: "ожидает" | "обработка" | "найдено" | "не найдено"
+}
+
+interface ThreadsDataRow {
+  id: number
+  date: string
+  postUrl: string
+  postText: string
+  comment: string
+  status: "ожидает" | "обработка" | "Готово"
 }
 
 type BrowserPhase =
@@ -33,6 +44,17 @@ type BrowserPhase =
   | "market2_page"
   | "price_found"
   | "writing"
+  | "threads_home"
+  | "threads_search_click"
+  | "threads_search_typing"
+  | "threads_search_loading"
+  | "threads_feed"
+  | "threads_post_click"
+  | "threads_post_open"
+  | "threads_comment_click"
+  | "threads_comment_typing"
+  | "threads_comment_publish"
+  | "threads_published"
 
 interface BrowserTab {
   title: string
@@ -52,111 +74,14 @@ interface BrowserState {
   foundPrice: string
   loadingProgress: number
   highlightedItem: number
+  threadsSearchQuery: string
+  threadsTypedQuery: string
+  threadsPosts: { author: string; text: string; time: string; likes: number; comments: number }[]
+  threadsCurrentPost: { author: string; text: string; time: string; likes: number; comments: number; url: string } | null
+  threadsCommentText: string
+  threadsTypedComment: string
+  threadsPostUrl: string
 }
-
-const PRODUCTS = [
-  "iPhone 15 Pro Max 256GB",
-  'MacBook Air M3 15"',
-  "Samsung Galaxy S24 Ultra",
-  "PlayStation 5 Slim",
-  "Nintendo Switch OLED",
-  "Xbox Series X",
-  'iPad Pro 11" M4',
-  "AirPods Pro 2",
-  "Dyson V15 Detect",
-  "Sony WH-1000XM5",
-  'LG OLED C4 65"',
-  "Bose QuietComfort Ultra",
-  "Canon EOS R6 Mark II",
-  "GoPro Hero 12 Black",
-  "DJI Mini 4 Pro",
-  "Kindle Paperwhite 5",
-  "Apple Watch Ultra 2",
-  "Samsung Galaxy Watch 6 Classic",
-  "Garmin Fenix 7X Pro",
-  "Meta Quest 3",
-  "Steam Deck OLED",
-  "ROG Ally X",
-  "Razer Blade 16",
-  "ThinkPad X1 Carbon Gen 11",
-  "Surface Pro 10",
-  "Dell XPS 15 9530",
-  "HP Spectre x360 14",
-  "ASUS Zenbook 14 OLED",
-  "Mac Studio M2 Ultra",
-  "Mac mini M2 Pro",
-  "Samsung 990 Pro 2TB",
-  "WD Black SN850X 2TB",
-  "Corsair DDR5 32GB Kit",
-  "NVIDIA RTX 4090",
-  "AMD Ryzen 9 7950X3D",
-  "Intel Core i9-14900K",
-  "ASUS ROG Maximus Z790",
-  "NZXT Kraken Z73 RGB",
-  "Corsair RM1000x",
-  "Fractal Design Torrent",
-  "Sony A7 IV Body",
-  "Fujifilm X-T5",
-  "Nikon Z8",
-  "Sigma 24-70mm f/2.8",
-  "Rode NT1 5th Gen",
-  "Elgato Stream Deck MK.2",
-  "Logitech MX Master 3S",
-  "Keychron Q1 Pro",
-  'Samsung 49" Odyssey G9',
-  'LG 27" UltraFine 5K',
-  "BenQ PD3220U",
-  "ASUS ProArt PA32UCG-K",
-  "Dell U3223QE",
-  "EIZO ColorEdge CG319X",
-  "Raspberry Pi 5 8GB",
-  "Arduino Uno R4 WiFi",
-  "ESP32-S3 DevKit",
-  "Flipper Zero",
-  "Anker 737 Power Bank",
-  "Shargeek 140W Power Bank",
-  "Apple Magic Keyboard",
-  "Logitech MX Keys S",
-  "Razer Huntsman V3 Pro",
-  "SteelSeries Apex Pro TKL",
-  "HyperX Cloud III Wireless",
-  "SteelSeries Arctis Nova Pro",
-  "Sennheiser HD 660S2",
-  "Focal Clear Mg",
-  "iFi Zen DAC V2",
-  "FiiO K7",
-  "Topping DX3 Pro+",
-  "Audio-Technica LP120X",
-  "Pro-Ject Debut Carbon EVO",
-  "KEF LSX II",
-  "Sonos Era 300",
-  "JBL Charge 5",
-  "Marshall Stanmore III",
-  "Bowers & Wilkins Zeppelin",
-  "Nest Hub Max",
-  "Echo Show 10",
-  "Apple HomePod 2",
-  "Ring Doorbell 4",
-  "Philips Hue Starter Kit",
-  "TP-Link Deco XE75 Pro",
-  "Ubiquiti Dream Machine SE",
-  "Synology DS923+",
-  "QNAP TS-464",
-  "WD Red Plus 8TB",
-  "Seagate IronWolf 8TB",
-  "Tesla Model 3 Accessories Kit",
-  "DJI Osmo Pocket 3",
-  "Insta360 X4",
-  "Peak Design Travel Tripod",
-  "Moment MT-24 Lens Filter",
-  "Apple AirTag 4-Pack",
-  "Tile Pro 2-Pack",
-  "Anker 715 PowerPort",
-  "UGREEN 100W USB-C Hub",
-  "CalDigit TS4 Dock",
-  "Elgato Key Light Mini",
-  "Rode PodMic USB",
-]
 
 const PRICE_RANGES: Record<string, [number, number]> = {
   iPhone: [89900, 129990],
@@ -284,6 +209,13 @@ const IDLE_BROWSER: BrowserState = {
   foundPrice: "",
   loadingProgress: 0,
   highlightedItem: -1,
+  threadsSearchQuery: "",
+  threadsTypedQuery: "",
+  threadsPosts: [],
+  threadsCurrentPost: null,
+  threadsCommentText: "",
+  threadsTypedComment: "",
+  threadsPostUrl: "",
 }
 
 interface ChatMessage {
@@ -291,12 +223,24 @@ interface ChatMessage {
   content: string
 }
 
-export function StepProcessing({ onBack }: StepProcessingProps) {
-  const [data, setData] = React.useState<DataRow[]>(() =>
+export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
+  const isThreads = caseSlug === "threads-comments"
+
+  const [priceData, setPriceData] = React.useState<DataRow[]>(() =>
     PRODUCTS.map((product, i) => ({
       id: i + 1,
       product,
       price: "",
+      status: "ожидает" as const,
+    }))
+  )
+  const [threadsData, setThreadsData] = React.useState<ThreadsDataRow[]>(() =>
+    THREADS_POSTS.map((post, i) => ({
+      id: i + 1,
+      date: post.date,
+      postUrl: "",
+      postText: "",
+      comment: "",
       status: "ожидает" as const,
     }))
   )
@@ -322,13 +266,16 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     []
   )
 
-  const dataRef = React.useRef(data)
+  const data = isThreads ? threadsData : priceData
+  const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
+
+  const priceDataRef = React.useRef(priceData)
   const currentIndexRef = React.useRef(currentIndex)
   const isRunningRef = React.useRef(isRunning)
   const userTouchedTabRef = React.useRef(userTouchedTab)
 
   React.useEffect(() => {
-    dataRef.current = data
+    priceDataRef.current = priceData
   }, [data])
   React.useEffect(() => {
     currentIndexRef.current = currentIndex
@@ -346,21 +293,21 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     []
   )
 
-  const processedCount = data.filter(
-    (r) => r.status === "найдено" || r.status === "не найдено"
-  ).length
-  const progress = Math.round((processedCount / data.length) * 100)
+  const processedCount = isThreads
+    ? threadsData.filter((r) => r.status === "Готово").length
+    : priceData.filter((r) => r.status === "найдено" || r.status === "не найдено").length
+  const progress = Math.round((processedCount / totalRows) * 100)
 
   const flashUrl = React.useCallback(() => {
     setUrlFlash(true)
     setTimeout(() => setUrlFlash(false), 400)
   }, [])
 
-  const processNext = React.useCallback(() => {
+  const processNextPrice = React.useCallback(() => {
     if (!isRunningRef.current) return
 
     const nextIdx = currentIndexRef.current + 1
-    if (nextIdx >= dataRef.current.length) {
+    if (nextIdx >= priceDataRef.current.length) {
       setIsRunning(false)
       setIsDone(true)
       addChat("system", "✅ Все строки обработаны.")
@@ -369,7 +316,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     }
 
     setCurrentIndex(nextIdx)
-    const product = dataRef.current[nextIdx].product
+    const product = priceDataRef.current[nextIdx].product
     const price = generatePrice(product)
     const found = Math.random() > 0.05
     const markets = pickMarkets()
@@ -399,7 +346,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
       setAgentActivePane(0)
       setTableFlash(true)
       setTimeout(() => setTableFlash(false), 600)
-      setData((prev) =>
+      setPriceData((prev) =>
         prev.map((row, i) =>
           i === nextIdx ? { ...row, status: "обработка" as const } : row
         )
@@ -418,6 +365,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     schedule(() => {
       setAgentActivePane(2)
       setBrowser({
+        ...IDLE_BROWSER,
         phase: "typing",
         tabs: [
           { title: "Google", url: "https://www.google.com/", active: true },
@@ -495,6 +443,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
       if (!found) return
       flashUrl()
       setBrowser({
+        ...IDLE_BROWSER,
         phase: "page_transition",
         tabs: [
           {
@@ -656,7 +605,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
 
     // Done, next
     schedule(() => {
-      setData((prev) =>
+      setPriceData((prev) =>
         prev.map((row, i) =>
           i === nextIdx
             ? {
@@ -674,9 +623,250 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     }, 21000)
   }, [addChat, flashUrl, setAgentActivePane])
 
+  const processNextThreads = React.useCallback(() => {
+    if (!isRunningRef.current) return
+
+    const nextIdx = currentIndexRef.current + 1
+    if (nextIdx >= THREADS_POSTS.length) {
+      setIsRunning(false)
+      setIsDone(true)
+      addChat("system", "✅ Все строки обработаны.")
+      setBrowser({ ...IDLE_BROWSER })
+      return
+    }
+
+    setCurrentIndex(nextIdx)
+    const post = THREADS_POSTS[nextIdx]
+    const searchQuery = "ai"
+    const handle = post.postUrl.match(/@([^/]+)/)?.[1] || "user"
+    const shortText = post.postText.length > 80 ? post.postText.slice(0, 80) + "..." : post.postText
+
+    const schedule = (fn: () => void, ms: number) =>
+      setTimeout(() => {
+        if (isRunningRef.current) fn()
+      }, ms)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      setChatFading(true)
+    }, 0)
+
+    schedule(() => {
+      setChat([])
+      setChatFading(false)
+    }, 400)
+
+    schedule(() => {
+      setAgentActivePane(0)
+      setTableFlash(true)
+      setTimeout(() => setTableFlash(false), 600)
+      setThreadsData((prev) =>
+        prev.map((row, i) =>
+          i === nextIdx ? { ...row, status: "обработка" as const } : row
+        )
+      )
+      addChat("divider", `Строка ${nextIdx + 1}`)
+      addChat("agent", `📋 Беру дату из таблицы: ${post.date}`)
+    }, 700)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      addChat("agent", `🔍 Начинаю поиск поста в Threads...`)
+    }, 1500)
+
+    schedule(() => {
+      setAgentActivePane(2)
+      setBrowser({
+        ...IDLE_BROWSER,
+        phase: "threads_home",
+        tabs: [{ title: "Threads", url: "https://www.threads.com/", active: true }],
+        url: "https://www.threads.com/",
+        currentPage: "threads",
+        threadsSearchQuery: searchQuery,
+      })
+    }, 2000)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_search_click",
+      }))
+      addChat("agent", `👆 Перехожу в раздел поиска...`)
+    }, 3000)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_search_typing",
+      }))
+    }, 3500)
+
+    let charIdx = 0
+    const typingInterval = setInterval(() => {
+      if (!isRunningRef.current) {
+        clearInterval(typingInterval)
+        return
+      }
+      charIdx++
+      setBrowser((prev) => ({
+        ...prev,
+        threadsTypedQuery: searchQuery.slice(0, charIdx),
+      }))
+      if (charIdx >= searchQuery.length) clearInterval(typingInterval)
+    }, 80)
+
+    schedule(() => {
+      flashUrl()
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_search_loading",
+        url: `https://www.threads.com/search?q=${encodeURIComponent(searchQuery)}`,
+        tabs: [{ title: `Поиск: ${searchQuery}`, url: `https://www.threads.com/search?q=${encodeURIComponent(searchQuery)}`, active: true }],
+        loadingProgress: 30,
+      }))
+      addChat("agent", `🌐 Ищу посты по запросу "${searchQuery}"...`)
+    }, 4500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        loadingProgress: 70,
+      }))
+    }, 5500)
+
+    schedule(() => {
+      const feedPosts = THREADS_POSTS.slice(nextIdx, nextIdx + 3).map((p) => ({
+        author: p.postUrl.match(/@([^/]+)/)?.[1] || "user",
+        text: p.postText.length > 100 ? p.postText.slice(0, 100) + "..." : p.postText,
+        time: "2ч",
+        likes: Math.floor(Math.random() * 50) + 10,
+        comments: Math.floor(Math.random() * 20) + 5,
+      }))
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_feed",
+        loadingProgress: 100,
+        threadsPosts: feedPosts,
+      }))
+      addChat("agent", `✓ Найдены посты по теме AI`)
+    }, 6500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_post_click",
+      }))
+      addChat("agent", `👆 Перехожу к посту @${handle}...`)
+    }, 8000)
+
+    schedule(() => {
+      flashUrl()
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_post_open",
+        url: post.postUrl,
+        tabs: [{ title: `Пост @${handle}`, url: post.postUrl, active: true }],
+        threadsCurrentPost: {
+          author: handle,
+          text: post.postText,
+          time: "2ч",
+          likes: Math.floor(Math.random() * 50) + 10,
+          comments: Math.floor(Math.random() * 20) + 5,
+          url: post.postUrl,
+        },
+        threadsPostUrl: post.postUrl,
+        threadsCommentText: post.comment,
+      }))
+      addChat("agent", `📄 Читаю пост: "${shortText}"`)
+    }, 9000)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      addChat("agent", `✍️ Генерирую нативный комментарий...`)
+    }, 10500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_comment_click",
+      }))
+      addChat("agent", `💬 Открываю поле комментария...`)
+    }, 11500)
+
+    schedule(() => {
+      setAgentActivePane(2)
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_comment_typing",
+      }))
+    }, 12000)
+
+    let commentCharIdx = 0
+    const commentTypingInterval = setInterval(() => {
+      if (!isRunningRef.current) {
+        clearInterval(commentTypingInterval)
+        return
+      }
+      commentCharIdx++
+      setBrowser((prev) => ({
+        ...prev,
+        threadsTypedComment: post.comment.slice(0, commentCharIdx),
+      }))
+      if (commentCharIdx >= post.comment.length) clearInterval(commentTypingInterval)
+    }, 20)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_comment_publish",
+      }))
+      addChat("agent", `📤 Публикую комментарий...`)
+    }, 15000)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_published",
+      }))
+      addChat("agent", `✅ Комментарий опубликован!`)
+    }, 16500)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      addChat("agent", `📝 Записываю результат в таблицу...`)
+    }, 17500)
+
+    schedule(() => {
+      setAgentActivePane(0)
+      setTableFlash(true)
+    }, 18200)
+
+    schedule(() => {
+      setThreadsData((prev) =>
+        prev.map((row, i) =>
+          i === nextIdx
+            ? {
+                ...row,
+                postUrl: post.postUrl,
+                postText: post.postText,
+                comment: post.comment,
+                status: "Готово" as const,
+              }
+            : row
+        )
+      )
+      setTimeout(() => setTableFlash(false), 600)
+      setBrowser({ ...IDLE_BROWSER })
+      setAgentActivePane(0)
+      processNextRef.current()
+    }, 19000)
+  }, [addChat, flashUrl, setAgentActivePane])
+
+  const processNext = isThreads ? processNextThreads : processNextPrice
+
   React.useEffect(() => {
-    processNextRef.current = processNext
-  }, [processNext])
+    processNextRef.current = isThreads ? processNextThreads : processNextPrice
+  }, [isThreads, processNextPrice, processNextThreads])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
@@ -710,6 +900,17 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     market2_page: "Страница маркетплейса",
     price_found: "Цена найдена!",
     writing: "Запись в таблицу...",
+    threads_home: "Threads загружен",
+    threads_search_click: "Открываю поиск...",
+    threads_search_typing: "Ввожу запрос...",
+    threads_search_loading: "Ищу посты...",
+    threads_feed: "Лента постов",
+    threads_post_click: "Перехожу к посту...",
+    threads_post_open: "Читаю пост",
+    threads_comment_click: "Открываю комментарий...",
+    threads_comment_typing: "Пишу комментарий...",
+    threads_comment_publish: "Публикую...",
+    threads_published: "Опубликовано!",
   }
 
   const [showCta, setShowCta] = React.useState(false)
@@ -729,14 +930,15 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
         <h2 className="text-lg font-semibold">Обработка данных ИИ-агентом</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        ИИ-агент ищет цены через браузер — вводит запрос в Google, переходит на
-        маркетплейсы и записывает результат.
+        {isThreads
+          ? "ИИ-агент ищет посты в Threads, генерирует нативные комментарии и публикует их."
+          : "ИИ-агент ищет цены через браузер — вводит запрос в Google, переходит на маркетплейсы и записывает результат."}
       </p>
 
       <div className="flex items-center gap-4">
         <Progress value={progress} className="flex-1" />
         <span className="shrink-0 text-xs text-muted-foreground">
-          {processedCount}/{data.length} ({progress}%)
+          {processedCount}/{totalRows} ({progress}%)
         </span>
         {!isDone && (
           <Button
@@ -807,49 +1009,87 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
             <ScrollArea className="md:h-[460px] h-[calc(100dvh-320px)]">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-card">
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="w-8 px-1.5 py-1 font-medium">#</th>
-                    <th className="px-1.5 py-1 font-medium">Название</th>
-                    <th className="w-24 px-1.5 py-1 font-medium">Цена</th>
-                    <th className="w-20 px-1.5 py-1 font-medium">Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((row) => {
-                    const isActive = row.id - 1 === currentIndex && isRunning
-                    const justUpdated = tableFlash && isActive
-                    return (
-                      <tr
-                        key={row.id}
-                        className={`border-b transition-all duration-300 ${
-                          justUpdated
-                            ? "bg-emerald-500/20 shadow-sm"
-                            : isActive
-                              ? "bg-primary/10"
-                              : row.status === "найдено"
-                                ? "bg-emerald-500/5"
-                                : row.status === "не найдено"
-                                  ? "bg-red-500/5"
+              {isThreads ? (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="w-6 px-1 py-1 font-medium">#</th>
+                      <th className="w-10 px-1 py-1 font-medium">A</th>
+                      <th className="hidden px-1 py-1 font-medium lg:table-cell">B</th>
+                      <th className="hidden px-1 py-1 font-medium sm:table-cell">C</th>
+                      <th className="hidden px-1 py-1 font-medium md:table-cell">D</th>
+                      <th className="w-14 px-1 py-1 font-medium">E</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {threadsData.map((row) => {
+                      const isActive = row.id - 1 === currentIndex && isRunning
+                      const justUpdated = tableFlash && isActive
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`border-b transition-all duration-300 ${
+                            justUpdated
+                              ? "bg-emerald-500/20 shadow-sm"
+                              : isActive
+                                ? "bg-primary/10"
+                                : row.status === "Готово"
+                                  ? "bg-emerald-500/5"
                                   : "hover:bg-muted/50"
-                        }`}
-                      >
-                        <td className="px-1.5 py-1 text-muted-foreground">
-                          {row.id}
-                        </td>
-                        <td className="px-1.5 py-1 font-medium">
-                          {row.product}
-                        </td>
-                        <td className="px-1.5 py-1">{row.price || "—"}</td>
-                        <td className="px-1.5 py-1">
-                          <StatusBadge status={row.status} />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          }`}
+                        >
+                          <td className="px-1 py-1 text-muted-foreground">{row.id}</td>
+                          <td className="px-1 py-1 font-medium">{row.date}</td>
+                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[100px] lg:table-cell">{row.postUrl || "—"}</td>
+                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[120px] sm:table-cell">{row.postText || "—"}</td>
+                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[100px] md:table-cell">{row.comment || "—"}</td>
+                          <td className="px-1 py-1">
+                            <ThreadsStatusBadge status={row.status} />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="w-8 px-1.5 py-1 font-medium">#</th>
+                      <th className="px-1.5 py-1 font-medium">Название</th>
+                      <th className="w-24 px-1.5 py-1 font-medium">Цена</th>
+                      <th className="w-20 px-1.5 py-1 font-medium">Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceData.map((row) => {
+                      const isActive = row.id - 1 === currentIndex && isRunning
+                      const justUpdated = tableFlash && isActive
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`border-b transition-all duration-300 ${
+                            justUpdated
+                              ? "bg-emerald-500/20 shadow-sm"
+                              : isActive
+                                ? "bg-primary/10"
+                                : row.status === "найдено"
+                                  ? "bg-emerald-500/5"
+                                  : row.status === "не найдено"
+                                    ? "bg-red-500/5"
+                                    : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <td className="px-1.5 py-1 text-muted-foreground">{row.id}</td>
+                          <td className="px-1.5 py-1 font-medium">{row.product}</td>
+                          <td className="px-1.5 py-1">{row.price || "—"}</td>
+                          <td className="px-1.5 py-1"><StatusBadge status={row.status} /></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -961,25 +1201,39 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
                 )}
               </CardTitle>
               <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                {browser.phase === "idle"
-                  ? "ИИ-агент управляет браузером через MCP Playwright для поиска цен"
-                  : browser.phase === "typing" ||
-                      browser.phase === "google_loading"
-                    ? "ИИ-агент вводит поисковый запрос в Google"
-                    : browser.phase === "google_results" ||
-                        browser.phase === "click_result"
-                      ? "ИИ-агент анализирует результаты и переходит на маркетплейс"
-                      : browser.phase.startsWith("market") ||
-                          browser.phase === "market2_loading" ||
-                          browser.phase === "market2_page"
-                        ? "ИИ-агент ищет товар и проверяет цену на маркетплейсе"
-                        : browser.phase === "tab_switch"
-                          ? "ИИ-агент переключается на другой маркетплейс для сравнения"
-                          : browser.phase === "price_found"
-                            ? "ИИ-агент подтвердил цену и готов записать результат"
-                            : browser.phase === "page_transition"
-                              ? "ИИ-агент переходит на страницу маркетплейса"
-                              : "ИИ-агент записывает найденную цену в таблицу данных"}
+                {isThreads
+                  ? browser.phase === "idle"
+                    ? "ИИ-агент управляет браузером через MCP Playwright для комментирования в Threads"
+                    : browser.phase.startsWith("threads_search")
+                      ? "ИИ-агент ищет посты по теме AI в Threads"
+                      : browser.phase === "threads_feed" || browser.phase === "threads_post_click"
+                        ? "ИИ-агент выбирает подходящий пост"
+                        : browser.phase === "threads_post_open"
+                          ? "ИИ-агент читает пост и генерирует комментарий"
+                          : browser.phase.startsWith("threads_comment")
+                            ? "ИИ-агент пишет и публикует комментарий"
+                            : browser.phase === "threads_published"
+                              ? "ИИ-агент опубликовал комментарий и записывает результат"
+                              : "ИИ-агент записывает результат в таблицу"
+                  : browser.phase === "idle"
+                    ? "ИИ-агент управляет браузером через MCP Playwright для поиска цен"
+                    : browser.phase === "typing" ||
+                        browser.phase === "google_loading"
+                      ? "ИИ-агент вводит поисковый запрос в Google"
+                      : browser.phase === "google_results" ||
+                          browser.phase === "click_result"
+                        ? "ИИ-агент анализирует результаты и переходит на маркетплейс"
+                        : browser.phase.startsWith("market") ||
+                            browser.phase === "market2_loading" ||
+                            browser.phase === "market2_page"
+                          ? "ИИ-агент ищет товар и проверяет цену на маркетплейсе"
+                          : browser.phase === "tab_switch"
+                            ? "ИИ-агент переключается на другой маркетплейс для сравнения"
+                            : browser.phase === "price_found"
+                              ? "ИИ-агент подтвердил цену и готов записать результат"
+                              : browser.phase === "page_transition"
+                                ? "ИИ-агент переходит на страницу маркетплейса"
+                                : "ИИ-агент записывает найденную цену в таблицу данных"}
               </p>
             </div>
           </CardHeader>
@@ -1027,6 +1281,164 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
                     <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       Обработка завершена
                     </p>
+                  </div>
+                )}
+
+                {/* THREADS HOME */}
+                {browser.phase === "threads_home" && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <div className="text-3xl">🧵</div>
+                    <p className="text-xs font-medium">Threads</p>
+                    <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: "60%" }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS SEARCH CLICK */}
+                {browser.phase === "threads_search_click" && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-6">
+                    <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-2">
+                      <span className="text-sm">🔍</span>
+                      <span className="text-xs text-muted-foreground">Нажимаю на поиск...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS SEARCH TYPING */}
+                {browser.phase === "threads_search_typing" && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <div className="text-2xl">🧵</div>
+                    <div className="relative w-72">
+                      <div className="w-full rounded-full border-2 border-purple-300 bg-background px-4 py-2 text-sm text-foreground">
+                        {browser.threadsTypedQuery}
+                        <span className="animate-pulse text-purple-500">|</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS SEARCH LOADING */}
+                {browser.phase === "threads_search_loading" && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <div className="text-2xl">🧵</div>
+                    <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: `${browser.loadingProgress}%` }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Ищу посты...</p>
+                  </div>
+                )}
+
+                {/* THREADS FEED */}
+                {browser.phase === "threads_feed" && (
+                  <div className="flex flex-col gap-2">
+                    {browser.threadsPosts.map((post, i) => (
+                      <div
+                        key={i}
+                        className={`rounded-lg border p-2.5 transition-all duration-200 ${
+                          i === 0
+                            ? "border-purple-200 bg-purple-50/50 shadow-sm hover:border-purple-300 dark:bg-purple-950/20"
+                            : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="mb-1 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-purple-200 dark:bg-purple-800" />
+                          <span className="text-[11px] font-medium">@{post.author}</span>
+                          <span className="text-[9px] text-muted-foreground">{post.time}</span>
+                        </div>
+                        <p className="text-[11px] leading-snug">{post.text}</p>
+                        <div className="mt-1.5 flex items-center gap-3 text-[9px] text-muted-foreground">
+                          <span>❤️ {post.likes}</span>
+                          <span>💬 {post.comments}</span>
+                        </div>
+                        {i === 0 && (
+                          <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-purple-600 dark:text-purple-400">
+                            <span className="inline-flex size-3 items-center justify-center rounded bg-purple-500 text-[7px] text-white">▸</span>
+                            ИИ-агент переходит...
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* THREADS POST CLICK */}
+                {browser.phase === "threads_post_click" && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-6">
+                    <span className="text-xl text-purple-500">⟳</span>
+                    <p className="text-xs text-muted-foreground">Открываю пост...</p>
+                  </div>
+                )}
+
+                {/* THREADS POST OPEN */}
+                {browser.phase === "threads_post_open" && browser.threadsCurrentPost && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="rounded-lg border bg-card p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="size-6 rounded-full bg-purple-200 dark:bg-purple-800" />
+                        <span className="text-xs font-medium">@{browser.threadsCurrentPost.author}</span>
+                        <span className="text-[9px] text-muted-foreground">{browser.threadsCurrentPost.time}</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">{browser.threadsCurrentPost.text}</p>
+                      <div className="mt-2 flex items-center gap-3 text-[9px] text-muted-foreground">
+                        <span>❤️ {browser.threadsCurrentPost.likes}</span>
+                        <span>💬 {browser.threadsCurrentPost.comments}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS COMMENT CLICK */}
+                {browser.phase === "threads_comment_click" && browser.threadsCurrentPost && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="rounded-lg border bg-card p-3 opacity-60">
+                      <p className="text-[10px] leading-snug line-clamp-2">{browser.threadsCurrentPost.text}</p>
+                    </div>
+                    <div className="animate-pulse rounded-lg border border-purple-200 bg-purple-50/30 p-2.5 dark:bg-purple-950/20">
+                      <div className="flex items-center gap-2">
+                        <div className="size-5 rounded-full bg-muted" />
+                        <span className="text-[10px] text-muted-foreground">Открываю поле комментария...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS COMMENT TYPING */}
+                {browser.phase === "threads_comment_typing" && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="rounded-lg border bg-card p-2 opacity-60">
+                      <p className="text-[9px] line-clamp-1">{browser.threadsCurrentPost?.text}</p>
+                    </div>
+                    <div className="rounded-lg border-2 border-purple-300 bg-background p-2.5">
+                      <p className="text-[11px] leading-relaxed">
+                        {browser.threadsTypedComment}
+                        <span className="animate-pulse text-purple-500">|</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* THREADS COMMENT PUBLISH */}
+                {browser.phase === "threads_comment_publish" && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-6">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-purple-500/15">
+                      <span className="text-lg text-purple-500">↑</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Публикую комментарий...</p>
+                  </div>
+                )}
+
+                {/* THREADS PUBLISHED */}
+                {browser.phase === "threads_published" && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-6">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
+                      <span className="text-xl">✅</span>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        Комментарий опубликован!
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1479,6 +1891,24 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status === "обработка" && <span className="mr-1 animate-spin">⟳</span>}
       {status === "найдено" && <span className="mr-1">✓</span>}
+      {status}
+    </span>
+  )
+}
+
+function ThreadsStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
+    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    Готово: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-200 ${styles[status] || styles["ожидает"]}`}
+    >
+      {status === "обработка" && <span className="mr-1 animate-spin">⟳</span>}
+      {status === "Готово" && <span className="mr-1">✓</span>}
       {status}
     </span>
   )
