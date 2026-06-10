@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { PRODUCTS } from "../data"
 import type { NormalizedBrowserPhase } from "../../types"
+import { createScheduler } from "../../scheduler"
 
 interface StepProcessingProps {
   caseSlug: string
@@ -233,6 +234,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   const userTouchedTabRef = React.useRef(userTouchedTab)
 
+  const schedulerRef = React.useRef<ReturnType<typeof createScheduler> | null>(
+    null
+  )
+  if (schedulerRef.current === null) {
+    schedulerRef.current = createScheduler({
+      debug: (msg, data) => console.debug(msg, data),
+    })
+  }
+  const scheduler = schedulerRef.current
+
   React.useEffect(() => {
     priceDataRef.current = data
   }, [data])
@@ -242,6 +253,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   React.useEffect(() => {
     isRunningRef.current = isRunning
   }, [isRunning])
+
+  React.useEffect(() => {
+    return () => {
+      scheduler.cancelAll()
+    }
+  }, [scheduler])
 
   const processNextRef = React.useRef<() => void>(() => {})
 
@@ -259,8 +276,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
 
   const flashUrl = React.useCallback(() => {
     setUrlFlash(true)
-    setTimeout(() => setUrlFlash(false), 400)
-  }, [])
+    const t = setTimeout(() => setUrlFlash(false), 400)
+    scheduler.trackTimer(t)
+  }, [scheduler])
 
   const debugPhase = React.useCallback(
     (phase: LocalPhase, rowIndex: number) => {
@@ -288,6 +306,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       return
     }
 
+    const myRunId = scheduler.nextRunId()
+
     setCurrentIndex(nextIdx)
     const product = priceDataRef.current[nextIdx].product
     const price = generatePrice(product)
@@ -299,10 +319,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     const marketItems1 = found ? generateMarketItems(product, price) : []
     const marketItems2 = found ? generateMarketItems(product, price) : []
 
-    const schedule = (fn: () => void, ms: number) =>
-      setTimeout(() => {
-        if (isRunningRef.current) fn()
+    const schedule = (fn: () => void, ms: number) => {
+      scheduler.schedule(() => {
+        if (scheduler.isStale(myRunId)) return
+        if (!isRunningRef.current) return
+        fn()
       }, ms)
+    }
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[price-search:processing] row start", {
@@ -325,7 +348,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     schedule(() => {
       setAgentActivePane(0)
       setTableFlash(true)
-      setTimeout(() => setTableFlash(false), 600)
+      const flashT = setTimeout(() => setTableFlash(false), 600)
+      scheduler.trackTimer(flashT)
       setPriceData((prev) =>
         prev.map((row, i) =>
           i === nextIdx ? { ...row, status: "обработка" as const } : row
@@ -362,8 +386,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
 
       let charIdx = 0
       const typingInterval = setInterval(() => {
-        if (!isRunningRef.current) {
+        if (scheduler.isStale(myRunId) || !isRunningRef.current) {
           clearInterval(typingInterval)
+          scheduler.scheduledIntervals.delete(typingInterval)
           return
         }
         charIdx++
@@ -371,8 +396,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           ...prev,
           typedQuery: googleQuery.slice(0, charIdx),
         }))
-        if (charIdx >= googleQuery.length) clearInterval(typingInterval)
+        if (charIdx >= googleQuery.length) {
+          clearInterval(typingInterval)
+          scheduler.scheduledIntervals.delete(typingInterval)
+        }
       }, 50)
+      scheduler.trackInterval(typingInterval)
     }, 2000)
 
     schedule(() => {
@@ -389,21 +418,31 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             active: true,
           },
         ],
-        loadingProgress: 30,
+        loadingProgress: 0,
       }))
       addChat("agent", `🌐 Ищу в Google: "${googleQuery}"`)
+      scheduler.tweenProgress(0, 30, 1300, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
     }, 3500)
 
     schedule(() => {
       debugPhase("google_results", nextIdx)
-      setBrowser((prev) => ({
-        ...prev,
-        phase: "google_results",
-        loadingProgress: 100,
-        searchResults: found ? searchResults : searchResults.slice(0, 1),
-      }))
-      if (found)
-        addChat("agent", `✓ Google нашёл ${searchResults.length} результатов`)
+      scheduler.tweenProgress(30, 100, 1300, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      }, () => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({
+          ...prev,
+          phase: "google_results",
+          loadingProgress: 100,
+          searchResults: found ? searchResults : searchResults.slice(0, 1),
+        }))
+        if (found)
+          addChat("agent", `✓ Google нашёл ${searchResults.length} результатов`)
+      })
     }, 5000)
 
     schedule(() => {
@@ -437,31 +476,48 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         searchResults: found ? searchResults : [],
         marketItems: [],
         foundPrice: "",
-        loadingProgress: 15,
+        loadingProgress: 0,
         highlightedItem: -1,
+      })
+      scheduler.tweenProgress(0, 15, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
       })
     }, 7500)
 
     schedule(() => {
       if (!found) return
-      setBrowser((prev) => ({ ...prev, phase: "market_loading", loadingProgress: 50 }))
+      setBrowser((prev) => ({ ...prev, phase: "market_loading" }))
+      scheduler.tweenProgress(15, 50, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
     }, 8500)
 
     schedule(() => {
       if (!found) return
-      setBrowser((prev) => ({ ...prev, loadingProgress: 80 }))
+      scheduler.tweenProgress(50, 80, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
     }, 9500)
 
     schedule(() => {
       if (!found) return
-      setBrowser((prev) => ({
-        ...prev,
-        phase: "market_page",
-        marketItems: marketItems1,
-        loadingProgress: 100,
-        highlightedItem: -1,
-      }))
-      addChat("agent", `📄 ${markets[0].name} загружен, ищу цену...`)
+      scheduler.tweenProgress(80, 100, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      }, () => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({
+          ...prev,
+          phase: "market_page",
+          marketItems: marketItems1,
+          loadingProgress: 100,
+          highlightedItem: -1,
+        }))
+        addChat("agent", `📄 ${markets[0].name} загружен, ищу цену...`)
+      })
     }, 10500)
 
     schedule(() => {
@@ -500,8 +556,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         url: `https://${markets[1].domain}/catalog/${encodeURIComponent(product.toLowerCase())}`,
         currentPage: markets[1].name,
         highlightedItem: -1,
-        loadingProgress: 20,
+        loadingProgress: 0,
       }))
+      scheduler.tweenProgress(0, 20, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
       addChat("agent", `🔄 Проверяю ${markets[1].name} для сравнения...`)
     }, 13500)
 
@@ -510,19 +570,28 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       setBrowser((prev) => ({
         ...prev,
         phase: "market2_loading",
-        loadingProgress: 60,
       }))
+      scheduler.tweenProgress(20, 60, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
     }, 14500)
 
     schedule(() => {
       if (!found) return
-      setBrowser((prev) => ({
-        ...prev,
-        phase: "market2_page",
-        marketItems: marketItems2,
-        loadingProgress: 100,
-        highlightedItem: -1,
-      }))
+      scheduler.tweenProgress(60, 100, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      }, () => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({
+          ...prev,
+          phase: "market2_page",
+          marketItems: marketItems2,
+          loadingProgress: 100,
+          highlightedItem: -1,
+        }))
+      })
     }, 15500)
 
     schedule(() => {
@@ -579,12 +648,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           price: found ? price : null,
         })
       }
-      setTimeout(() => setTableFlash(false), 600)
+      const t = setTimeout(() => setTableFlash(false), 600)
+      scheduler.trackTimer(t)
       setBrowser({ ...IDLE_BROWSER })
       setAgentActivePane(0)
       processNextRef.current()
     }, 21000)
-  }, [addChat, flashUrl, setAgentActivePane, debugPhase])
+  }, [addChat, flashUrl, setAgentActivePane, debugPhase, scheduler])
 
   React.useEffect(() => {
     processNextRef.current = processNext
@@ -595,15 +665,17 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     isRunningRef.current = true
     setUserTouchedTab(false)
     addChat("agent", "🚀 Агент запущен.")
-    setTimeout(() => processNextRef.current(), 300)
-  }, [addChat])
+    const t = setTimeout(() => processNextRef.current(), 300)
+    scheduler.trackTimer(t)
+  }, [addChat, scheduler])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
     isRunningRef.current = false
     setUserTouchedTab(false)
+    scheduler.cancelAll()
     addChat("agent", "⏸ Пауза.")
-  }, [addChat])
+  }, [addChat, scheduler])
 
   const activeMarket = MARKETPLACES.find((m) => m.name === browser.currentPage)
 

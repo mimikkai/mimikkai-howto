@@ -1,9 +1,17 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import type { ThreadsPost } from "./data"
 import { toThreadsRow } from "./steps/StepDataTable"
 
+const make = (date: string): ThreadsPost => ({
+  date,
+  postText: "",
+  postUrl: "",
+  comment: "",
+})
+
 test("toThreadsRow maps ThreadsPost to ThreadsDataRow at index", () => {
-  const row = toThreadsRow({ date: "18.05", postText: "", postUrl: "", comment: "" }, 0)
+  const row = toThreadsRow(make("18.05"), 0)
   assert.equal(row.id, 1)
   assert.equal(row.date, "18.05")
   assert.equal(row.status, "ожидает")
@@ -13,8 +21,6 @@ test("toThreadsRow maps ThreadsPost to ThreadsDataRow at index", () => {
 })
 
 test("toThreadsRow assigns correct id from index", () => {
-  const r0 = toThreadsRow({ date: "a" } as never, 0)
-  const r4 = toThreadsRow({ date: "b" } as never, 4)
-  assert.equal(r0.id, 1)
-  assert.equal(r4.id, 5)
+  assert.equal(toThreadsRow(make("a"), 0).id, 1)
+  assert.equal(toThreadsRow(make("b"), 4).id, 5)
 })

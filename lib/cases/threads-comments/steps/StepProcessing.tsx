@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { THREADS_POSTS } from "../data"
 import type { NormalizedBrowserPhase } from "../../types"
+import { createScheduler } from "../../scheduler"
 
 interface StepProcessingProps {
   caseSlug: string
@@ -125,6 +126,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   const userTouchedTabRef = React.useRef(userTouchedTab)
 
+  const schedulerRef = React.useRef<ReturnType<typeof createScheduler> | null>(
+    null
+  )
+  if (schedulerRef.current === null) {
+    schedulerRef.current = createScheduler({
+      debug: (msg, data) => console.debug(msg, data),
+    })
+  }
+  const scheduler = schedulerRef.current
+
   React.useEffect(() => {
     threadsDataRef.current = threadsData
   }, [threadsData])
@@ -134,6 +145,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   React.useEffect(() => {
     isRunningRef.current = isRunning
   }, [isRunning])
+
+  React.useEffect(() => {
+    return () => {
+      scheduler.cancelAll()
+    }
+  }, [scheduler])
 
   const processNextRef = React.useRef<() => void>(() => {})
 
@@ -149,8 +166,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
 
   const flashUrl = React.useCallback(() => {
     setUrlFlash(true)
-    setTimeout(() => setUrlFlash(false), 400)
-  }, [])
+    const t = setTimeout(() => setUrlFlash(false), 400)
+    scheduler.trackTimer(t)
+  }, [scheduler])
 
   const debugPhase = React.useCallback(
     (phase: LocalPhase, rowIndex: number) => {
@@ -197,10 +215,15 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       cleanedComment = cleanedComment.trim().slice(0, -1)
     }
 
-    const schedule = (fn: () => void, ms: number) =>
-      setTimeout(() => {
-        if (isRunningRef.current) fn()
+    const myRunId = scheduler.nextRunId()
+
+    const schedule = (fn: () => void, ms: number) => {
+      scheduler.schedule(() => {
+        if (scheduler.isStale(myRunId)) return
+        if (!isRunningRef.current) return
+        fn()
       }, ms)
+    }
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[threads-comments:processing] row start", {
@@ -223,7 +246,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     schedule(() => {
       setAgentActivePane(0)
       setTableFlash(true)
-      setTimeout(() => setTableFlash(false), 600)
+      const flashT = setTimeout(() => setTableFlash(false), 600)
+      scheduler.trackTimer(flashT)
       setThreadsData((prev) =>
         prev.map((row, i) =>
           i === nextIdx ? { ...row, status: "обработка" as const } : row
@@ -244,7 +268,11 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       setBrowser({
         ...IDLE_BROWSER,
         phase: "threads_home",
-        loadingProgress: 60,
+        loadingProgress: 0,
+      })
+      scheduler.tweenProgress(0, 60, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
       })
     }, 2000)
 
@@ -258,8 +286,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       debugPhase("threads_search_typing", nextIdx)
       let charIdx = 0
       const typingInterval = setInterval(() => {
-        if (!isRunningRef.current) {
+        if (scheduler.isStale(myRunId) || !isRunningRef.current) {
           clearInterval(typingInterval)
+          scheduler.scheduledIntervals.delete(typingInterval)
           return
         }
         charIdx++
@@ -267,8 +296,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           ...prev,
           threadsTypedQuery: searchQuery.slice(0, charIdx),
         }))
-        if (charIdx >= searchQuery.length) clearInterval(typingInterval)
+        if (charIdx >= searchQuery.length) {
+          clearInterval(typingInterval)
+          scheduler.scheduledIntervals.delete(typingInterval)
+        }
       }, 80)
+      scheduler.trackInterval(typingInterval)
     }, 3500)
 
     schedule(() => {
@@ -276,22 +309,34 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       setBrowser((prev) => ({
         ...prev,
         phase: "threads_search_loading",
-        loadingProgress: 30,
+        loadingProgress: 0,
       }))
+      scheduler.tweenProgress(0, 30, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
       addChat("agent", `🌐 Ищу посты по запросу "${searchQuery}"...`)
     }, 4500)
 
     schedule(() => {
-      setBrowser((prev) => ({ ...prev, loadingProgress: 70 }))
+      scheduler.tweenProgress(30, 70, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      })
     }, 5500)
 
     schedule(() => {
-      setBrowser((prev) => ({
-        ...prev,
-        phase: "threads_feed",
-        loadingProgress: 100,
-      }))
-      addChat("agent", `✓ Найдены посты по теме AI`)
+      scheduler.tweenProgress(70, 100, 1000, (v) => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({ ...prev, loadingProgress: v }))
+      }, () => {
+        if (scheduler.isStale(myRunId)) return
+        setBrowser((prev) => ({
+          ...prev,
+          phase: "threads_feed",
+        }))
+        addChat("agent", `✓ Найдены посты по теме AI`)
+      })
     }, 6500)
 
     schedule(() => {
@@ -334,8 +379,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       debugPhase("threads_comment_typing", nextIdx)
       let commentCharIdx = 0
       const commentTypingInterval = setInterval(() => {
-        if (!isRunningRef.current) {
+        if (scheduler.isStale(myRunId) || !isRunningRef.current) {
           clearInterval(commentTypingInterval)
+          scheduler.scheduledIntervals.delete(commentTypingInterval)
           return
         }
         commentCharIdx++
@@ -343,9 +389,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           ...prev,
           threadsTypedComment: cleanedComment.slice(0, commentCharIdx),
         }))
-        if (commentCharIdx >= cleanedComment.length)
+        if (commentCharIdx >= cleanedComment.length) {
           clearInterval(commentTypingInterval)
+          scheduler.scheduledIntervals.delete(commentTypingInterval)
+        }
       }, 20)
+      scheduler.trackInterval(commentTypingInterval)
     }, 12500)
 
     schedule(() => {
@@ -410,12 +459,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           postUrl: post.postUrl,
         })
       }
-      setTimeout(() => setTableFlash(false), 600)
+      const flashT = setTimeout(() => setTableFlash(false), 600)
+      scheduler.trackTimer(flashT)
       setBrowser({ ...IDLE_BROWSER })
       setAgentActivePane(0)
       processNextRef.current()
     }, 21500)
-  }, [addChat, flashUrl, setAgentActivePane, debugPhase])
+  }, [addChat, flashUrl, setAgentActivePane, debugPhase, scheduler])
 
   React.useEffect(() => {
     processNextRef.current = processNext
@@ -426,15 +476,17 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     isRunningRef.current = true
     setUserTouchedTab(false)
     addChat("agent", "🚀 Агент запущен.")
-    setTimeout(() => processNextRef.current(), 300)
-  }, [addChat])
+    const t = setTimeout(() => processNextRef.current(), 300)
+    scheduler.trackTimer(t)
+  }, [addChat, scheduler])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
     isRunningRef.current = false
     setUserTouchedTab(false)
+    scheduler.cancelAll()
     addChat("agent", "⏸ Пауза.")
-  }, [addChat])
+  }, [addChat, scheduler])
 
   const ThreadsStatusBadge = ({ status }: { status: ThreadsDataRow["status"] }) => {
     const styles: Record<string, string> = {
