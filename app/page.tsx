@@ -206,7 +206,7 @@ function PageContent() {
             <div className="text-center">
               <h1 className="text-2xl font-bold">Выберите сценарий</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Выберите кейс, чтобы увидеть работу ИИ-агента
+                Интерактивное демо — выберите кейс, чтобы увидеть работу ИИ-агента
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
