@@ -76,6 +76,33 @@
     rowFlash 0.8s ease-out 0.15s both;
 }
 
+@keyframes tabEnter {
+  0% {
+    opacity: 0;
+    transform: translateX(8px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-1px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.tab-animate-in {
+  animation: tabEnter 0.32s ease-out both;
+  transform-origin: right center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-animate-in,
+  .row-animate-in {
+    animation: none;
+  }
+}
+
 @layer base {
   *,
   ::after,

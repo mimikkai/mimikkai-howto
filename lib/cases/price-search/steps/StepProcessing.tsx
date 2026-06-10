@@ -260,6 +260,24 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     }
   }, [scheduler])
 
+  const tabsCountRef = React.useRef(browser.tabs.length)
+  React.useEffect(() => {
+    const prev = tabsCountRef.current
+    const next = browser.tabs.length
+    if (next > prev) {
+      const newest = browser.tabs[next - 1]
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[price-search:processing] tab added", {
+          prev,
+          next,
+          title: newest?.title,
+          url: newest?.url,
+        })
+      }
+    }
+    tabsCountRef.current = next
+  }, [browser.tabs])
+
   const processNextRef = React.useRef<() => void>(() => {})
 
   const addChat = React.useCallback(
@@ -948,7 +966,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 {browser.tabs.map((tab, i) => (
                   <div
                     key={i}
-                    className={`flex shrink-0 items-center gap-1.5 border-r px-2 py-1 text-[9px] transition-all duration-200 ${
+                    className={`tab-animate-in flex shrink-0 items-center gap-1.5 border-r px-2 py-1 text-[9px] transition-all duration-200 ${
                       tab.active
                         ? "border-b-2 border-b-blue-500 bg-background font-medium text-foreground"
                         : "text-muted-foreground"
