@@ -240,7 +240,7 @@ const IDLE_BROWSER: BrowserState = {
 }
 
 interface ChatMessage {
-  role: "agent" | "system"
+  role: "agent" | "system" | "divider"
   content: string
 }
 
@@ -261,6 +261,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [urlFlash, setUrlFlash] = React.useState(false)
   const [activePane, setActivePane] = React.useState<0 | 1 | 2>(0)
   const [tableFlash, setTableFlash] = React.useState(false)
+  const [chatFading, setChatFading] = React.useState(false)
 
   const dataRef = React.useRef(data)
   dataRef.current = data
@@ -269,7 +270,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   isRunningRef.current = isRunning
 
-  const addChat = React.useCallback((role: "agent" | "system", content: string) => {
+  const addChat = React.useCallback((role: "agent" | "system" | "divider", content: string) => {
     setChat((prev) => [...prev, { role, content }])
   }, [])
 
@@ -308,7 +309,17 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       if (isRunningRef.current) fn()
     }, ms)
 
-    // STEP 1: Read from table
+    // STEP 1: Read from table — first fade out & clear chat
+    schedule(() => {
+      setActivePane(1)
+      setChatFading(true)
+    }, 0)
+
+    schedule(() => {
+      setChat([])
+      setChatFading(false)
+    }, 400)
+
     schedule(() => {
       setActivePane(0)
       setTableFlash(true)
@@ -316,8 +327,9 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       setData((prev) =>
         prev.map((row, i) => (i === nextIdx ? { ...row, status: "обработка" as const } : row))
       )
-      addChat("agent", `📋 Беру данные из таблицы: строка ${nextIdx + 1} — "${product}"`)
-    }, 100)
+      addChat("divider", `Строка ${nextIdx + 1}`)
+      addChat("agent", `📋 Беру данные из таблицы: "${product}"`)
+    }, 700)
 
     // Pause to show table highlight
     schedule(() => {
@@ -667,7 +679,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
             <ScrollArea className="h-[460px] pr-2">
-              <div className="flex flex-col gap-2">
+              <div className={`flex flex-col gap-2 transition-opacity duration-300 ${chatFading ? "opacity-0" : "opacity-100"}`}>
                 {chat.length === 0 && (
                   <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
                     <span className="text-3xl opacity-30">🤖</span>
@@ -675,19 +687,26 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                   </div>
                 )}
                 {chat.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${msg.role === "agent" ? "justify-start" : "justify-end"}`}
-                  >
-                    <div
-                      className={`max-w-[90%] rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
-                        msg.role === "agent"
-                          ? "bg-muted text-foreground"
-                          : "bg-primary/10 text-primary border border-primary/20"
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
+                  <div key={i}>
+                    {msg.role === "divider" ? (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex-1 border-t" />
+                        <span className="text-[9px] text-muted-foreground font-medium shrink-0">{msg.content}</span>
+                        <div className="flex-1 border-t" />
+                      </div>
+                    ) : (
+                      <div className={`flex ${msg.role === "agent" ? "justify-start" : "justify-end"}`}>
+                        <div
+                          className={`max-w-[90%] rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
+                            msg.role === "agent"
+                              ? "bg-muted text-foreground"
+                              : "bg-primary/10 text-primary border border-primary/20"
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isRunning && browser.phase !== "idle" && (
