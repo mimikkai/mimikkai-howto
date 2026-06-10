@@ -55,6 +55,7 @@ type BrowserPhase =
   | "threads_comment_typing"
   | "threads_comment_publish"
   | "threads_published"
+  | "threads_check"
 
 interface BrowserTab {
   title: string
@@ -94,6 +95,7 @@ interface BrowserState {
   threadsCommentText: string
   threadsTypedComment: string
   threadsPostUrl: string
+  threadsCheckResults: string[]
 }
 
 const PRICE_RANGES: Record<string, [number, number]> = {
@@ -229,6 +231,7 @@ const IDLE_BROWSER: BrowserState = {
   threadsCommentText: "",
   threadsTypedComment: "",
   threadsPostUrl: "",
+  threadsCheckResults: [],
 }
 
 interface ChatMessage {
@@ -655,6 +658,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ? post.postText.slice(0, 80) + "..."
         : post.postText
 
+    let cleanedComment = post.comment
+      .replace(/—/g, ",")
+      .replace(/\bследует\b/gi, "стоит")
+      .replace(/\bнеобходимо\b/gi, "нужно")
+      .replace(/\bрекомендуем\b/gi, "советуем")
+      .replace(/\bобращайтесь\b/gi, "пишите")
+    if (cleanedComment.trim().endsWith(".")) {
+      cleanedComment = cleanedComment.trim().slice(0, -1)
+    }
+
     const schedule = (fn: () => void, ms: number) =>
       setTimeout(() => {
         if (isRunningRef.current) fn()
@@ -763,7 +776,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
           p.postText.length > 100
             ? p.postText.slice(0, 100) + "..."
             : p.postText,
-        time: "2ч",
+        time: p.date,
         likes: Math.floor(Math.random() * 50) + 10,
         comments: Math.floor(Math.random() * 20) + 5,
       }))
@@ -794,13 +807,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         threadsCurrentPost: {
           author: handle,
           text: post.postText,
-          time: "2ч",
+          time: post.date,
           likes: Math.floor(Math.random() * 50) + 10,
           comments: Math.floor(Math.random() * 20) + 5,
           url: post.postUrl,
         },
         threadsPostUrl: post.postUrl,
-        threadsCommentText: post.comment,
+        threadsCommentText: cleanedComment,
       }))
       addChat("agent", `📄 Читаю пост: "${shortText}"`)
     }, 9000)
@@ -834,12 +847,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         commentCharIdx++
         setBrowser((prev) => ({
           ...prev,
-          threadsTypedComment: post.comment.slice(0, commentCharIdx),
+          threadsTypedComment: cleanedComment.slice(0, commentCharIdx),
         }))
-        if (commentCharIdx >= post.comment.length)
+        if (commentCharIdx >= cleanedComment.length)
           clearInterval(commentTypingInterval)
       }, 20)
-    }, 12000)
+    }, 12500)
 
     schedule(() => {
       setBrowser((prev) => ({
@@ -847,7 +860,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         phase: "threads_comment_publish",
       }))
       addChat("agent", `📤 Публикую комментарий...`)
-    }, 15000)
+    }, 15500)
 
     schedule(() => {
       setBrowser((prev) => ({
@@ -855,17 +868,44 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         phase: "threads_published",
       }))
       addChat("agent", `✅ Комментарий опубликован!`)
-    }, 16500)
+    }, 17000)
 
     schedule(() => {
       setAgentActivePane(1)
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "threads_check",
+      }))
+
+      const hasEmDash = post.comment.includes("—")
+      const hasFormalPhrasing = /\bследует\b|\bнеобходимо\b|\bрекомендуем\b|\bобращайтесь\b/i.test(post.comment)
+      const endsWithPeriod = post.comment.trim().endsWith(".")
+      const checks: string[] = []
+      if (hasEmDash) checks.push("заменить длинное тире (—) на запятую или переформулировать")
+      if (hasFormalPhrasing) checks.push("упростить формальный тон")
+      if (endsWithPeriod) checks.push("убрать точку в конце")
+
+      setBrowser((prev) => ({
+        ...prev,
+        threadsCheckResults: checks,
+      }))
+
+      if (checks.length > 0) {
+        addChat("agent", `🔍 Проверяю опубликованный комментарий на ИИ-маркеры...`)
+        addChat("agent", `⚠️ Найдены маркеры: ${checks.join("; ")}. Исправляю.`)
+      } else {
+        addChat("agent", `✅ Проверка пройдена: комментарий выглядит нативным`)
+      }
+    }, 18000)
+
+    schedule(() => {
       addChat("agent", `📝 Записываю результат в таблицу...`)
-    }, 17500)
+    }, 20000)
 
     schedule(() => {
       setAgentActivePane(0)
       setTableFlash(true)
-    }, 18200)
+    }, 20700)
 
     schedule(() => {
       setThreadsData((prev) =>
@@ -875,7 +915,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 ...row,
                 postUrl: post.postUrl,
                 postText: post.postText,
-                comment: post.comment,
+                comment: cleanedComment,
                 status: "Готово" as const,
               }
             : row
@@ -885,7 +925,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       setBrowser({ ...IDLE_BROWSER })
       setAgentActivePane(0)
       processNextRef.current()
-    }, 19000)
+    }, 21500)
   }, [addChat, flashUrl, setAgentActivePane])
 
   const processNext = isThreads ? processNextThreads : processNextPrice
@@ -937,10 +977,11 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     threads_comment_typing: "Пишу комментарий...",
     threads_comment_publish: "Публикую...",
     threads_published: "Опубликовано!",
+    threads_check: "Проверяю комментарий...",
   }
 
   const [showCta, setShowCta] = React.useState(false)
-  const [ctaCollapsed, setCtaCollapsed] = React.useState(false)
+  const [ctaCollapsed, setCtaCollapsed] = React.useState(true)
 
   React.useEffect(() => {
     if (isRunning && !showCta) {
@@ -1265,8 +1306,10 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                           : browser.phase.startsWith("threads_comment")
                             ? "ИИ-агент пишет и публикует комментарий"
                             : browser.phase === "threads_published"
-                              ? "ИИ-агент опубликовал комментарий и записывает результат"
-                              : "ИИ-агент записывает результат в таблицу"
+                              ? "ИИ-агент опубликовал комментарий"
+                              : browser.phase === "threads_check"
+                                ? "ИИ-агент проверяет опубликованный комментарий на ИИ-маркеры"
+                                : "ИИ-агент записывает результат в таблицу"
                   : browser.phase === "idle"
                     ? "ИИ-агент управляет браузером через MCP Playwright для поиска цен"
                     : browser.phase === "typing" ||
@@ -1470,7 +1513,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                   browser.threadsCurrentPost && (
                     <div className="flex flex-col gap-2.5">
                       <div className="rounded-lg border bg-card p-3 opacity-60">
-                        <p className="line-clamp-2 text-[10px] leading-snug">
+                        <div className="mb-1 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-purple-200 dark:bg-purple-800" />
+                          <span className="text-[11px] font-medium">
+                            @{browser.threadsCurrentPost.author}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {browser.threadsCurrentPost.time}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-snug">
                           {browser.threadsCurrentPost.text}
                         </p>
                       </div>
@@ -1485,15 +1537,99 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                     </div>
                   )}
 
+                {/* THREADS CHECK */}
+                {browser.phase === "threads_check" &&
+                  browser.threadsCurrentPost && (
+                    <div className="flex flex-col gap-2.5">
+                      <div className="rounded-lg border bg-card p-3 opacity-70">
+                        <div className="mb-1 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-purple-200 dark:bg-purple-800" />
+                          <span className="text-[11px] font-medium">
+                            @{browser.threadsCurrentPost.author}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {browser.threadsCurrentPost.time}
+                          </span>
+                        </div>
+                        <p className="line-clamp-2 text-[10px] leading-snug">
+                          {browser.threadsCurrentPost.text}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/50 p-3 dark:bg-emerald-950/20">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-emerald-200 dark:bg-emerald-800" />
+                          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                            @mimikkai
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            только что
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed">
+                          {browser.threadsCommentText}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border-2 border-amber-300 bg-amber-50/50 p-2.5 dark:bg-amber-950/20">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="text-sm">🔍</span>
+                          <span className="text-[11px] font-medium">
+                            Проверка на ИИ-маркеры
+                          </span>
+                        </div>
+                        {browser.threadsCheckResults.length > 0 ? (
+                          <div className="flex flex-col gap-1.5">
+                            {browser.threadsCheckResults.map((check, i) => (
+                              <div
+                                key={i}
+                                className="flex items-start gap-1.5 text-[10px]"
+                              >
+                                <span className="mt-0.5 text-amber-500">⚠️</span>
+                                <span className="text-amber-700 dark:text-amber-400">
+                                  {check}
+                                </span>
+                              </div>
+                            ))}
+                            <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                              <span>✅</span>
+                              <span className="font-medium">Исправлено</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                            <span>✅</span>
+                            <span className="font-medium">
+                              Маркеры не найдены — комментарий нативный
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                 {/* THREADS COMMENT TYPING */}
                 {browser.phase === "threads_comment_typing" && (
                   <div className="flex flex-col gap-2.5">
                     <div className="rounded-lg border bg-card p-2 opacity-60">
-                      <p className="line-clamp-1 text-[9px]">
+                      <div className="mb-1 flex items-center gap-2">
+                        <div className="size-4 rounded-full bg-purple-200 dark:bg-purple-800" />
+                        <span className="text-[10px] font-medium">
+                          @{browser.threadsCurrentPost?.author}
+                        </span>
+                        <span className="text-[8px] text-muted-foreground">
+                          {browser.threadsCurrentPost?.time}
+                        </span>
+                      </div>
+                      <p className="text-[9px] leading-snug">
                         {browser.threadsCurrentPost?.text}
                       </p>
                     </div>
                     <div className="rounded-lg border-2 border-purple-300 bg-background p-2.5">
+                      <div className="mb-1 flex items-center gap-2">
+                        <div className="size-4 rounded-full bg-emerald-200 dark:bg-emerald-800" />
+                        <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                          @mimikkai
+                        </span>
+                      </div>
                       <p className="text-[11px] leading-relaxed">
                         {browser.threadsTypedComment}
                         <span className="animate-pulse text-purple-500">|</span>
@@ -1515,18 +1651,43 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 )}
 
                 {/* THREADS PUBLISHED */}
-                {browser.phase === "threads_published" && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-6">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                      <span className="text-xl">✅</span>
+                {browser.phase === "threads_published" &&
+                  browser.threadsCurrentPost && (
+                    <div className="flex flex-col gap-2.5">
+                      <div className="rounded-lg border bg-card p-3 opacity-70">
+                        <div className="mb-1 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-purple-200 dark:bg-purple-800" />
+                          <span className="text-[11px] font-medium">
+                            @{browser.threadsCurrentPost.author}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {browser.threadsCurrentPost.time}
+                          </span>
+                        </div>
+                        <p className="line-clamp-2 text-[10px] leading-snug">
+                          {browser.threadsCurrentPost.text}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/50 p-3 dark:bg-emerald-950/20">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-emerald-200 dark:bg-emerald-800" />
+                          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                            @mimikkai
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            только что
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed">
+                          {browser.threadsCommentText}
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 text-[9px] text-muted-foreground">
+                          <span>❤️ 0</span>
+                          <span>💬 0</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                        Комментарий опубликован!
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {/* TYPING in Google */}
                 {browser.phase === "typing" && (
