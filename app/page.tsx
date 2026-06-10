@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useCallback, useEffect, Fragment } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { StepChat } from "@/components/step-chat"
 import { StepMimLua } from "@/components/step-mim-lua"
@@ -102,21 +102,21 @@ function PageContent() {
   const currentCase = CASES.find((c) => c.slug === caseSlug) ?? null
   const step: Step | null = (SLUG_TO_STEP[stepSlug ?? ""] as Step) || null
 
-  const goToStep = React.useCallback(
+  const goToStep = useCallback(
     (s: Step) => {
       router.push(`${pathname}?case=${caseSlug}&step=${STEP_SLUGS[s]}`)
     },
     [router, pathname, caseSlug]
   )
 
-  const selectCase = React.useCallback(
+  const selectCase = useCallback(
     (slug: string) => {
       router.push(`${pathname}?case=${slug}&step=chat`)
     },
     [router, pathname]
   )
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (caseSlug && !stepSlug) {
       router.replace(`${pathname}?case=${caseSlug}&step=chat`)
     }
@@ -162,7 +162,7 @@ function PageContent() {
                 ← {currentCase.title}
               </button>
               {([1, 2, 3, 4] as Step[]).map((s) => (
-                <React.Fragment key={s}>
+                <Fragment key={s}>
                   <div
                     className={`mx-1 h-px w-6 ${s <= (step ?? 1) ? "bg-primary" : "bg-border"}`}
                   />
