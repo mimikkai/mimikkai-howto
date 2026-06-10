@@ -13,7 +13,14 @@ interface StepMimLuaProps {
 
 export function StepMimLua({ caseSlug, onNext, onBack }: StepMimLuaProps) {
   const caseConfig = CASE_CONFIGS[caseSlug]
-  const { inputColumns, outputColumns, promptSteps, agentTitle, agentDesc, promptIntro } = caseConfig.mimLua
+  const {
+    inputColumns,
+    outputColumns,
+    promptSteps,
+    agentTitle,
+    agentDesc,
+    promptIntro,
+  } = caseConfig.mimLua
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -27,10 +34,8 @@ export function StepMimLua({ caseSlug, onNext, onBack }: StepMimLuaProps) {
             🤖
           </span>
           <div>
-          <div className="text-base font-semibold">{agentTitle}</div>
-          <div className="text-xs text-muted-foreground">
-            {agentDesc}
-          </div>
+            <div className="text-base font-semibold">{agentTitle}</div>
+            <div className="text-xs text-muted-foreground">{agentDesc}</div>
           </div>
         </div>
 

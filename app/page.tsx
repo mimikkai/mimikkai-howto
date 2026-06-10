@@ -53,7 +53,8 @@ const CASES: CaseConfig[] = [
   {
     slug: "threads-comments",
     title: "Комментирование в Threads",
-    description: "Агент находит посты об AI в Threads и оставляет нативные комментарии",
+    description:
+      "Агент находит посты об AI в Threads и оставляет нативные комментарии",
     icon: "🧵",
     available: true,
   },
@@ -206,7 +207,8 @@ function PageContent() {
             <div className="text-center">
               <h1 className="text-2xl font-bold">Выберите сценарий</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Интерактивное демо — выберите кейс, чтобы увидеть работу ИИ-агента
+                Интерактивное демо — выберите кейс, чтобы увидеть работу
+                ИИ-агента
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -233,7 +235,9 @@ function PageContent() {
           </div>
         ) : (
           <>
-            {step === 1 && <StepChat caseSlug={caseSlug!} onComplete={() => goToStep(2)} />}
+            {step === 1 && (
+              <StepChat caseSlug={caseSlug!} onComplete={() => goToStep(2)} />
+            )}
             {step === 2 && (
               <StepMimLua
                 caseSlug={caseSlug!}
@@ -248,22 +252,24 @@ function PageContent() {
                 onBack={() => goToStep(2)}
               />
             )}
-            {step === 4 && <StepProcessing caseSlug={caseSlug!} onBack={() => goToStep(3)} />}
+            {step === 4 && (
+              <StepProcessing caseSlug={caseSlug!} onBack={() => goToStep(3)} />
+            )}
           </>
         )}
-       </main>
-        <footer className="border-t bg-background">
-          <div className="mx-auto flex max-w-6xl items-center justify-center px-3 py-2 sm:px-6 sm:py-3">
-            <a
-              href="https://mimikkai.ru"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-            >
-              mimikkai.ru
-            </a>
-          </div>
-        </footer>
-      </div>
+      </main>
+      <footer className="border-t bg-background">
+        <div className="mx-auto flex max-w-6xl items-center justify-center px-3 py-2 sm:px-6 sm:py-3">
+          <a
+            href="https://mimikkai.ru"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            mimikkai.ru
+          </a>
+        </div>
+      </footer>
+    </div>
   )
 }

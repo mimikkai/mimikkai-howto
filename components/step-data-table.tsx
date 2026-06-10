@@ -33,7 +33,11 @@ interface ThreadsDataRow {
 const BATCH_SIZE = 5
 const BATCH_DELAY_MS = 50
 
-export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) {
+export function StepDataTable({
+  caseSlug,
+  onNext,
+  onBack,
+}: StepDataTableProps) {
   const caseConfig = CASE_CONFIGS[caseSlug]
   const isThreads = caseSlug === "threads-comments"
 
@@ -176,14 +180,17 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium">{caseConfig.dataTable.emptyTitle}</p>
-                <p className="text-xs">
-                  {caseConfig.dataTable.emptyDesc}
+                <p className="text-sm font-medium">
+                  {caseConfig.dataTable.emptyTitle}
                 </p>
+                <p className="text-xs">{caseConfig.dataTable.emptyDesc}</p>
               </div>
             </div>
           ) : isThreads ? (
-            <ScrollArea ref={scrollRef} className="md:h-[440px] h-[calc(100dvh-340px)]">
+            <ScrollArea
+              ref={scrollRef}
+              className="h-[calc(100dvh-340px)] md:h-[440px]"
+            >
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
                   <tr className="border-b text-left text-muted-foreground">
@@ -193,10 +200,8 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
                         key={col.id}
                         className={`px-2 py-2 font-medium ${
                           col.id === "C" ? "hidden sm:table-cell" : ""
-                        } ${
-                          col.id === "D" ? "hidden md:table-cell" : ""
-                        } ${
-                          col.id === "B" ? "hidden lg:table-cell w-36" : ""
+                        } ${col.id === "D" ? "hidden md:table-cell" : ""} ${
+                          col.id === "B" ? "hidden w-36 lg:table-cell" : ""
                         }`}
                       >
                         {col.id} — {col.label}
@@ -227,10 +232,10 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
                         <td className="hidden px-2 py-2 text-muted-foreground lg:table-cell">
                           {row.postUrl || "—"}
                         </td>
-                        <td className="hidden px-2 py-2 text-muted-foreground sm:table-cell max-w-[200px] truncate">
+                        <td className="hidden max-w-[200px] truncate px-2 py-2 text-muted-foreground sm:table-cell">
                           {row.postText || "—"}
                         </td>
-                        <td className="hidden px-2 py-2 text-muted-foreground md:table-cell max-w-[160px] truncate">
+                        <td className="hidden max-w-[160px] truncate px-2 py-2 text-muted-foreground md:table-cell">
                           {row.comment || "—"}
                         </td>
                         <td className="px-2 py-2">
@@ -247,7 +252,10 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
               </table>
             </ScrollArea>
           ) : (
-            <ScrollArea ref={scrollRef} className="md:h-[440px] h-[calc(100dvh-340px)]">
+            <ScrollArea
+              ref={scrollRef}
+              className="h-[calc(100dvh-340px)] md:h-[440px]"
+            >
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
                   <tr className="border-b text-left text-muted-foreground">
@@ -255,7 +263,9 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
                     <th className="px-3 py-2 font-medium">
                       A — Название товара
                     </th>
-                    <th className="hidden w-36 px-3 py-2 font-medium sm:table-cell">B — Цена</th>
+                    <th className="hidden w-36 px-3 py-2 font-medium sm:table-cell">
+                      B — Цена
+                    </th>
                     <th className="w-28 px-3 py-2 font-medium">C — Статус</th>
                   </tr>
                 </thead>
@@ -311,7 +321,9 @@ export function StepDataTable({ caseSlug, onNext, onBack }: StepDataTableProps) 
               onClick={handleFillData}
               disabled={isFilling}
             >
-              {isFilling ? "Заполнение..." : caseConfig.dataTable.fillButtonText}
+              {isFilling
+                ? "Заполнение..."
+                : caseConfig.dataTable.fillButtonText}
             </Button>
           )}
           {isFilled && (

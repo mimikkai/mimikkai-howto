@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
+import { PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
 
 interface StepProcessingProps {
   caseSlug: string
@@ -76,8 +76,21 @@ interface BrowserState {
   highlightedItem: number
   threadsSearchQuery: string
   threadsTypedQuery: string
-  threadsPosts: { author: string; text: string; time: string; likes: number; comments: number }[]
-  threadsCurrentPost: { author: string; text: string; time: string; likes: number; comments: number; url: string } | null
+  threadsPosts: {
+    author: string
+    text: string
+    time: string
+    likes: number
+    comments: number
+  }[]
+  threadsCurrentPost: {
+    author: string
+    text: string
+    time: string
+    likes: number
+    comments: number
+    url: string
+  } | null
   threadsCommentText: string
   threadsTypedComment: string
   threadsPostUrl: string
@@ -256,15 +269,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const [tableFlash, setTableFlash] = React.useState(false)
   const [chatFading, setChatFading] = React.useState(false)
 
-  const setAgentActivePane = React.useCallback(
-    (pane: 0 | 1 | 2) => {
-      setAgentPane(pane)
-      if (!userTouchedTabRef.current) {
-        setActivePane(pane)
-      }
-    },
-    []
-  )
+  const setAgentActivePane = React.useCallback((pane: 0 | 1 | 2) => {
+    setAgentPane(pane)
+    if (!userTouchedTabRef.current) {
+      setActivePane(pane)
+    }
+  }, [])
 
   const data = isThreads ? threadsData : priceData
   const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
@@ -295,7 +305,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
 
   const processedCount = isThreads
     ? threadsData.filter((r) => r.status === "Готово").length
-    : priceData.filter((r) => r.status === "найдено" || r.status === "не найдено").length
+    : priceData.filter(
+        (r) => r.status === "найдено" || r.status === "не найдено"
+      ).length
   const progress = Math.round((processedCount / totalRows) * 100)
 
   const flashUrl = React.useCallback(() => {
@@ -639,7 +651,10 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     const post = THREADS_POSTS[nextIdx]
     const searchQuery = "ai"
     const handle = post.postUrl.match(/@([^/]+)/)?.[1] || "user"
-    const shortText = post.postText.length > 80 ? post.postText.slice(0, 80) + "..." : post.postText
+    const shortText =
+      post.postText.length > 80
+        ? post.postText.slice(0, 80) + "..."
+        : post.postText
 
     const schedule = (fn: () => void, ms: number) =>
       setTimeout(() => {
@@ -679,7 +694,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       setBrowser({
         ...IDLE_BROWSER,
         phase: "threads_home",
-        tabs: [{ title: "Threads", url: "https://www.threads.com/", active: true }],
+        tabs: [
+          { title: "Threads", url: "https://www.threads.com/", active: true },
+        ],
         url: "https://www.threads.com/",
         currentPage: "threads",
         threadsSearchQuery: searchQuery,
@@ -721,7 +738,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ...prev,
         phase: "threads_search_loading",
         url: `https://www.threads.com/search?q=${encodeURIComponent(searchQuery)}`,
-        tabs: [{ title: `Поиск: ${searchQuery}`, url: `https://www.threads.com/search?q=${encodeURIComponent(searchQuery)}`, active: true }],
+        tabs: [
+          {
+            title: `Поиск: ${searchQuery}`,
+            url: `https://www.threads.com/search?q=${encodeURIComponent(searchQuery)}`,
+            active: true,
+          },
+        ],
         loadingProgress: 30,
       }))
       addChat("agent", `🌐 Ищу посты по запросу "${searchQuery}"...`)
@@ -737,7 +760,10 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     schedule(() => {
       const feedPosts = THREADS_POSTS.slice(nextIdx, nextIdx + 3).map((p) => ({
         author: p.postUrl.match(/@([^/]+)/)?.[1] || "user",
-        text: p.postText.length > 100 ? p.postText.slice(0, 100) + "..." : p.postText,
+        text:
+          p.postText.length > 100
+            ? p.postText.slice(0, 100) + "..."
+            : p.postText,
         time: "2ч",
         likes: Math.floor(Math.random() * 50) + 10,
         comments: Math.floor(Math.random() * 20) + 5,
@@ -812,7 +838,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ...prev,
         threadsTypedComment: post.comment.slice(0, commentCharIdx),
       }))
-      if (commentCharIdx >= post.comment.length) clearInterval(commentTypingInterval)
+      if (commentCharIdx >= post.comment.length)
+        clearInterval(commentTypingInterval)
     }, 20)
 
     schedule(() => {
@@ -957,13 +984,14 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       </div>
 
       <div className="flex gap-1 rounded-lg bg-muted p-1">
-        {([
+        {[
           { pane: 0 as const, icon: "📊", label: "Таблица", color: "emerald" },
           { pane: 1 as const, icon: "🤖", label: "Чат ИИ", color: "purple" },
           { pane: 2 as const, icon: "🌐", label: "Браузер", color: "blue" },
-        ]).map(({ pane, icon, label, color }) => {
+        ].map(({ pane, icon, label, color }) => {
           const isActive = activePane === pane
-          const hasAgentSignal = agentPane === pane && userTouchedTab && agentPane !== activePane
+          const hasAgentSignal =
+            agentPane === pane && userTouchedTab && agentPane !== activePane
           return (
             <button
               key={pane}
@@ -980,10 +1008,14 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
               <span>{icon}</span>
               <span className="hidden sm:inline">{label}</span>
               {hasAgentSignal && (
-                <span className={`absolute -right-0.5 -top-0.5 size-2 rounded-full bg-${color}-500 animate-pulse`} />
+                <span
+                  className={`absolute -top-0.5 -right-0.5 size-2 rounded-full bg-${color}-500 animate-pulse`}
+                />
               )}
               {isActive && isRunning && agentPane === pane && (
-                <span className={`size-1.5 rounded-full bg-${color}-500 animate-pulse`} />
+                <span
+                  className={`size-1.5 rounded-full bg-${color}-500 animate-pulse`}
+                />
               )}
             </button>
           )
@@ -1008,16 +1040,22 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="md:h-[460px] h-[calc(100dvh-320px)]">
+            <ScrollArea className="h-[calc(100dvh-320px)] md:h-[460px]">
               {isThreads ? (
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="w-6 px-1 py-1 font-medium">#</th>
                       <th className="w-10 px-1 py-1 font-medium">A</th>
-                      <th className="hidden px-1 py-1 font-medium lg:table-cell">B</th>
-                      <th className="hidden px-1 py-1 font-medium sm:table-cell">C</th>
-                      <th className="hidden px-1 py-1 font-medium md:table-cell">D</th>
+                      <th className="hidden px-1 py-1 font-medium lg:table-cell">
+                        B
+                      </th>
+                      <th className="hidden px-1 py-1 font-medium sm:table-cell">
+                        C
+                      </th>
+                      <th className="hidden px-1 py-1 font-medium md:table-cell">
+                        D
+                      </th>
                       <th className="w-14 px-1 py-1 font-medium">E</th>
                     </tr>
                   </thead>
@@ -1038,11 +1076,19 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                                   : "hover:bg-muted/50"
                           }`}
                         >
-                          <td className="px-1 py-1 text-muted-foreground">{row.id}</td>
+                          <td className="px-1 py-1 text-muted-foreground">
+                            {row.id}
+                          </td>
                           <td className="px-1 py-1 font-medium">{row.date}</td>
-                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[100px] lg:table-cell">{row.postUrl || "—"}</td>
-                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[120px] sm:table-cell">{row.postText || "—"}</td>
-                          <td className="hidden px-1 py-1 text-muted-foreground truncate max-w-[100px] md:table-cell">{row.comment || "—"}</td>
+                          <td className="hidden max-w-[100px] truncate px-1 py-1 text-muted-foreground lg:table-cell">
+                            {row.postUrl || "—"}
+                          </td>
+                          <td className="hidden max-w-[120px] truncate px-1 py-1 text-muted-foreground sm:table-cell">
+                            {row.postText || "—"}
+                          </td>
+                          <td className="hidden max-w-[100px] truncate px-1 py-1 text-muted-foreground md:table-cell">
+                            {row.comment || "—"}
+                          </td>
                           <td className="px-1 py-1">
                             <ThreadsStatusBadge status={row.status} />
                           </td>
@@ -1080,10 +1126,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                                     : "hover:bg-muted/50"
                           }`}
                         >
-                          <td className="px-1.5 py-1 text-muted-foreground">{row.id}</td>
-                          <td className="px-1.5 py-1 font-medium">{row.product}</td>
+                          <td className="px-1.5 py-1 text-muted-foreground">
+                            {row.id}
+                          </td>
+                          <td className="px-1.5 py-1 font-medium">
+                            {row.product}
+                          </td>
                           <td className="px-1.5 py-1">{row.price || "—"}</td>
-                          <td className="px-1.5 py-1"><StatusBadge status={row.status} /></td>
+                          <td className="px-1.5 py-1">
+                            <StatusBadge status={row.status} />
+                          </td>
                         </tr>
                       )
                     })}
@@ -1111,7 +1163,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="md:h-[460px] h-[calc(100dvh-320px)] pr-2">
+            <ScrollArea className="h-[calc(100dvh-320px)] pr-2 md:h-[460px]">
               <div
                 className={`flex flex-col gap-2 transition-opacity duration-300 ${chatFading ? "opacity-0" : "opacity-100"}`}
               >
@@ -1206,7 +1258,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                     ? "ИИ-агент управляет браузером через MCP Playwright для комментирования в Threads"
                     : browser.phase.startsWith("threads_search")
                       ? "ИИ-агент ищет посты по теме AI в Threads"
-                      : browser.phase === "threads_feed" || browser.phase === "threads_post_click"
+                      : browser.phase === "threads_feed" ||
+                          browser.phase === "threads_post_click"
                         ? "ИИ-агент выбирает подходящий пост"
                         : browser.phase === "threads_post_open"
                           ? "ИИ-агент читает пост и генерирует комментарий"
@@ -1290,7 +1343,10 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                     <div className="text-3xl">🧵</div>
                     <p className="text-xs font-medium">Threads</p>
                     <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: "60%" }} />
+                      <div
+                        className="h-full bg-purple-500 transition-all duration-500"
+                        style={{ width: "60%" }}
+                      />
                     </div>
                   </div>
                 )}
@@ -1300,7 +1356,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                   <div className="flex flex-col items-center justify-center gap-2 py-6">
                     <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-2">
                       <span className="text-sm">🔍</span>
-                      <span className="text-xs text-muted-foreground">Нажимаю на поиск...</span>
+                      <span className="text-xs text-muted-foreground">
+                        Нажимаю на поиск...
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1323,9 +1381,14 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                   <div className="flex flex-col items-center gap-4 py-6">
                     <div className="text-2xl">🧵</div>
                     <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: `${browser.loadingProgress}%` }} />
+                      <div
+                        className="h-full bg-purple-500 transition-all duration-500"
+                        style={{ width: `${browser.loadingProgress}%` }}
+                      />
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Ищу посты...</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Ищу посты...
+                    </p>
                   </div>
                 )}
 
@@ -1343,8 +1406,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                       >
                         <div className="mb-1 flex items-center gap-2">
                           <div className="size-5 rounded-full bg-purple-200 dark:bg-purple-800" />
-                          <span className="text-[11px] font-medium">@{post.author}</span>
-                          <span className="text-[9px] text-muted-foreground">{post.time}</span>
+                          <span className="text-[11px] font-medium">
+                            @{post.author}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {post.time}
+                          </span>
                         </div>
                         <p className="text-[11px] leading-snug">{post.text}</p>
                         <div className="mt-1.5 flex items-center gap-3 text-[9px] text-muted-foreground">
@@ -1353,7 +1420,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                         </div>
                         {i === 0 && (
                           <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-purple-600 dark:text-purple-400">
-                            <span className="inline-flex size-3 items-center justify-center rounded bg-purple-500 text-[7px] text-white">▸</span>
+                            <span className="inline-flex size-3 items-center justify-center rounded bg-purple-500 text-[7px] text-white">
+                              ▸
+                            </span>
                             ИИ-агент переходит...
                           </div>
                         )}
@@ -1366,48 +1435,64 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 {browser.phase === "threads_post_click" && (
                   <div className="flex flex-col items-center justify-center gap-2 py-6">
                     <span className="text-xl text-purple-500">⟳</span>
-                    <p className="text-xs text-muted-foreground">Открываю пост...</p>
+                    <p className="text-xs text-muted-foreground">
+                      Открываю пост...
+                    </p>
                   </div>
                 )}
 
                 {/* THREADS POST OPEN */}
-                {browser.phase === "threads_post_open" && browser.threadsCurrentPost && (
-                  <div className="flex flex-col gap-2.5">
-                    <div className="rounded-lg border bg-card p-3">
-                      <div className="mb-2 flex items-center gap-2">
-                        <div className="size-6 rounded-full bg-purple-200 dark:bg-purple-800" />
-                        <span className="text-xs font-medium">@{browser.threadsCurrentPost.author}</span>
-                        <span className="text-[9px] text-muted-foreground">{browser.threadsCurrentPost.time}</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed">{browser.threadsCurrentPost.text}</p>
-                      <div className="mt-2 flex items-center gap-3 text-[9px] text-muted-foreground">
-                        <span>❤️ {browser.threadsCurrentPost.likes}</span>
-                        <span>💬 {browser.threadsCurrentPost.comments}</span>
+                {browser.phase === "threads_post_open" &&
+                  browser.threadsCurrentPost && (
+                    <div className="flex flex-col gap-2.5">
+                      <div className="rounded-lg border bg-card p-3">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="size-6 rounded-full bg-purple-200 dark:bg-purple-800" />
+                          <span className="text-xs font-medium">
+                            @{browser.threadsCurrentPost.author}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {browser.threadsCurrentPost.time}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed">
+                          {browser.threadsCurrentPost.text}
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 text-[9px] text-muted-foreground">
+                          <span>❤️ {browser.threadsCurrentPost.likes}</span>
+                          <span>💬 {browser.threadsCurrentPost.comments}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* THREADS COMMENT CLICK */}
-                {browser.phase === "threads_comment_click" && browser.threadsCurrentPost && (
-                  <div className="flex flex-col gap-2.5">
-                    <div className="rounded-lg border bg-card p-3 opacity-60">
-                      <p className="text-[10px] leading-snug line-clamp-2">{browser.threadsCurrentPost.text}</p>
-                    </div>
-                    <div className="animate-pulse rounded-lg border border-purple-200 bg-purple-50/30 p-2.5 dark:bg-purple-950/20">
-                      <div className="flex items-center gap-2">
-                        <div className="size-5 rounded-full bg-muted" />
-                        <span className="text-[10px] text-muted-foreground">Открываю поле комментария...</span>
+                {browser.phase === "threads_comment_click" &&
+                  browser.threadsCurrentPost && (
+                    <div className="flex flex-col gap-2.5">
+                      <div className="rounded-lg border bg-card p-3 opacity-60">
+                        <p className="line-clamp-2 text-[10px] leading-snug">
+                          {browser.threadsCurrentPost.text}
+                        </p>
+                      </div>
+                      <div className="animate-pulse rounded-lg border border-purple-200 bg-purple-50/30 p-2.5 dark:bg-purple-950/20">
+                        <div className="flex items-center gap-2">
+                          <div className="size-5 rounded-full bg-muted" />
+                          <span className="text-[10px] text-muted-foreground">
+                            Открываю поле комментария...
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* THREADS COMMENT TYPING */}
                 {browser.phase === "threads_comment_typing" && (
                   <div className="flex flex-col gap-2.5">
                     <div className="rounded-lg border bg-card p-2 opacity-60">
-                      <p className="text-[9px] line-clamp-1">{browser.threadsCurrentPost?.text}</p>
+                      <p className="line-clamp-1 text-[9px]">
+                        {browser.threadsCurrentPost?.text}
+                      </p>
                     </div>
                     <div className="rounded-lg border-2 border-purple-300 bg-background p-2.5">
                       <p className="text-[11px] leading-relaxed">
@@ -1424,7 +1509,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                     <div className="flex size-10 items-center justify-center rounded-full bg-purple-500/15">
                       <span className="text-lg text-purple-500">↑</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Публикую комментарий...</p>
+                    <p className="text-xs text-muted-foreground">
+                      Публикую комментарий...
+                    </p>
                   </div>
                 )}
 
