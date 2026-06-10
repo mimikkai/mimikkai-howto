@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { StepChat } from "@/components/step-chat"
 import { StepMimLua } from "@/components/step-mim-lua"
@@ -85,6 +85,14 @@ const SLUG_TO_STEP: Record<string, Step> = {
 }
 
 export default function Page() {
+  return (
+    <Suspense>
+      <PageContent />
+    </Suspense>
+  )
+}
+
+function PageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
