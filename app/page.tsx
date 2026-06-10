@@ -207,7 +207,7 @@ function PageContent() {
             <div className="text-center">
               <h1 className="text-2xl font-bold">Выберите сценарий</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Интерактивное демо — выберите кейс, чтобы увидеть работу
+                Интерактивное демо — выберите кейс, чтобы увидеть примеры работы
                 ИИ-агента
               </p>
             </div>
@@ -232,6 +232,31 @@ function PageContent() {
                 </Card>
               ))}
             </div>
+            <div className="my-2 w-full border-t" />
+            <a
+              href="https://panel.mimikkai.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group block w-full max-w-2xl"
+            >
+              <Card className="w-full transition-all hover:border-primary/50 hover:shadow-lg">
+                <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:text-left">
+                  <span className="text-5xl">⚡</span>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-lg font-bold">
+                      Создай свой ИИ-агент
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Перейдите в панель управления MimikkAi, чтобы создать и настроить
+                      собственного ИИ-агента под ваши задачи
+                    </span>
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
+                      Открыть panel.mimikkai.ru →
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </a>
           </div>
         ) : (
           <>
