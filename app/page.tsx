@@ -55,7 +55,7 @@ export default function Page() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold">MimikkAi</span>
-            <span className="text-xs text-muted-foreground">Интерактивный гайд</span>
+            <span className="text-xs text-muted-foreground">Интерактивный демо</span>
           </div>
           <a
             href="https://mimikkai.ru"

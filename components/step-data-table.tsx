@@ -124,12 +124,13 @@ const PRODUCTS = [
 ]
 
 const BATCH_SIZE = 5
-const BATCH_DELAY_MS = 40
+const BATCH_DELAY_MS = 50
 
 export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
   const [data, setData] = React.useState<DataRow[]>([])
   const [isFilling, setIsFilling] = React.useState(false)
   const [isFilled, setIsFilled] = React.useState(false)
+  const [lastAddedCount, setLastAddedCount] = React.useState(0)
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
   const fillProgress = Math.round((data.length / PRODUCTS.length) * 100)
@@ -157,6 +158,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
       }
 
       setData((prev) => [...prev, ...newRows])
+      setLastAddedCount(newRows.length)
       batchIndex++
 
       if (end >= PRODUCTS.length) {
@@ -249,24 +251,27 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((row, index) => (
-                    <tr
-                      key={row.id}
-                      className="border-b transition-colors hover:bg-muted/50 animate-[rowSlideIn_0.3s_ease-out_both]"
-                      style={{ animationDelay: `${(index % BATCH_SIZE) * 30}ms` }}
-                    >
-                      <td className="px-3 py-2 text-muted-foreground">{row.id}</td>
-                      <td className="px-3 py-2 font-medium">{row.product}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {row.price || "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {data.map((row, index) => {
+                    const isNew = index >= data.length - lastAddedCount && isFilling
+                    return (
+                      <tr
+                        key={row.id}
+                        className={`border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
+                        style={isNew ? { animationDelay: `${(index % BATCH_SIZE) * 40}ms` } : undefined}
+                      >
+                        <td className="px-3 py-2 text-muted-foreground">{row.id}</td>
+                        <td className="px-3 py-2 font-medium">{row.product}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {row.price || "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </ScrollArea>
