@@ -69,32 +69,25 @@ export function ScenarioStep(props: ScenarioStepProps) {
   ] as unknown as StepComponent<Record<string, unknown>>
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Badge variant="outline">Шаг {step} из 4</Badge>
-        <h2 className="text-lg font-semibold">{STEP_TITLES[step]}</h2>
-      </div>
-
-      <div className="min-h-0 flex-1">
-        {step === 1 ? (
-          <StepComponent
-            caseSlug={slug}
-            onComplete={(props as StepChatWrapperProps).onComplete}
-          />
-        ) : step === 4 ? (
-          <StepComponent
-            caseSlug={slug}
-            onBack={(props as StepNavWrapperProps).onBack}
-          />
-        ) : (
-          <StepComponent
-            caseSlug={slug}
-            onBack={(props as StepNavWrapperProps).onBack}
-            onNext={(props as StepNavWrapperProps).onNext ?? (() => {})}
-          />
-        )}
-      </div>
-    </div>
+    <>
+      {step === 1 ? (
+        <StepComponent
+          caseSlug={slug}
+          onComplete={(props as StepChatWrapperProps).onComplete}
+        />
+      ) : step === 4 ? (
+        <StepComponent
+          caseSlug={slug}
+          onBack={(props as StepNavWrapperProps).onBack}
+        />
+      ) : (
+        <StepComponent
+          caseSlug={slug}
+          onBack={(props as StepNavWrapperProps).onBack}
+          onNext={(props as StepNavWrapperProps).onNext ?? (() => {})}
+        />
+      )}
+    </>
   )
 }
 

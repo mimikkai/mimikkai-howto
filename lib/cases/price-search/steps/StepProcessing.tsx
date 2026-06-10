@@ -988,7 +988,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 </div>
               </div>
 
-              <div className="h-[300px] overflow-y-auto bg-background p-2.5">
+              <div key={browser.phase} className="content-animate-in h-[300px] overflow-y-auto bg-background p-2.5">
                 {browser.phase === "idle" && !isDone && (
                   <div className="flex flex-col items-center justify-center gap-3 py-10">
                     <div className="text-4xl opacity-30">🌐</div>

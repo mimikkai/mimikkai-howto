@@ -96,9 +96,25 @@
   transform-origin: right center;
 }
 
+@keyframes contentEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.content-animate-in {
+  animation: contentEnter 0.28s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tab-animate-in,
-  .row-animate-in {
+  .row-animate-in,
+  .content-animate-in {
     animation: none;
   }
 }

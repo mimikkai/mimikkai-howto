@@ -2,63 +2,16 @@
 
 import { Suspense, useCallback, useEffect, Fragment } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { StepChat } from "@/components/step-chat"
-import { StepMimLua } from "@/components/step-mim-lua"
-import { StepDataTable } from "@/components/step-data-table"
-import { StepProcessing } from "@/components/step-processing"
+import { ScenarioStep } from "@/components/scenario-step"
+import { listScenarios } from "@/lib/cases/registry"
+import "@/lib/cases/price-search"
+import "@/lib/cases/threads-comments"
+import "@/lib/cases/email-outreach"
+import "@/lib/cases/ticket-reply"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 type Step = 1 | 2 | 3 | 4
-
-interface CaseConfig {
-  slug: string
-  title: string
-  description: string
-  icon: string
-  available: boolean
-}
-
-const CASES: CaseConfig[] = [
-  {
-    slug: "price-search",
-    title: "Поиск цен",
-    description: "Агент находит цены товаров, переходя на сайты магазинов",
-    icon: "🛍️",
-    available: true,
-  },
-  {
-    slug: "threads-comments",
-    title: "Комментирование в Threads",
-    description:
-      "Агент находит посты об AI в Threads и оставляет нативные комментарии",
-    icon: "📣",
-    available: true,
-  },
-  {
-    slug: "email-outreach",
-    title: "Email рассылка",
-    description:
-      "Массовая email-рассылка компаниям с персонализированными предложениями",
-    icon: "📧",
-    available: true,
-  },
-  {
-    slug: "order-processing",
-    title: "Обработка заказов",
-    description:
-      "Автоматическая обработка и статус-обновление входящих заказов",
-    icon: "📦",
-    available: false,
-  },
-  {
-    slug: "ticket-reply",
-    title: "Ответ на тикеты",
-    description: "ИИ-агент отвечает на обращения клиентов в системе поддержки",
-    icon: "🎫",
-    available: false,
-  },
-]
 
 const STEP_TITLES: Record<Step, string> = {
   1: "Создание агента",
@@ -101,9 +54,11 @@ function PageContent() {
   const router = useRouter()
   const pathname = usePathname()
 
+  const scenarios = listScenarios()
+
   const caseSlug = searchParams.get("case")
   const stepSlug = searchParams.get("step")
-  const currentCase = CASES.find((c) => c.slug === caseSlug) ?? null
+  const currentScenario = caseSlug ? scenarios.find((s) => s.meta.slug === caseSlug) ?? null : null
   const step: Step | null = (SLUG_TO_STEP[stepSlug ?? ""] as Step) || null
 
   const goToStep = useCallback(
@@ -126,7 +81,7 @@ function PageContent() {
     }
   }, [caseSlug, stepSlug, router, pathname])
 
-  const isLanding = !caseSlug || !currentCase
+  const isLanding = !caseSlug || !currentScenario
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -162,7 +117,7 @@ function PageContent() {
         </div>
       </header>
 
-      {!isLanding && currentCase && (
+      {!isLanding && currentScenario && (
         <nav className="border-b bg-muted/30">
           <div className="mx-auto max-w-6xl px-6">
             <div className="flex items-center gap-1 py-2">
@@ -170,7 +125,7 @@ function PageContent() {
                 onClick={() => router.push(pathname)}
                 className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60"
               >
-                ← {currentCase.title}
+                ← {currentScenario.meta.title}
               </button>
               {([1, 2, 3, 4] as Step[]).map((s) => (
                 <Fragment key={s}>
@@ -212,25 +167,28 @@ function PageContent() {
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {CASES.map((c) => (
-                <Card
-                  key={c.slug}
-                  className={`aspect-square w-48 cursor-pointer transition-all ${
-                    c.available
-                      ? "hover:border-primary/50 hover:shadow-md"
-                      : "cursor-default opacity-50"
-                  }`}
-                  onClick={() => c.available && selectCase(c.slug)}
-                >
-                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                    <span className="text-4xl">{c.icon}</span>
-                    <span className="text-sm font-semibold">{c.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {c.available ? c.description : "Скоро"}
-                    </span>
-                  </CardContent>
-                </Card>
-              ))}
+              {scenarios.map((scenario) => {
+                const meta = scenario.meta
+                return (
+                  <Card
+                    key={meta.slug}
+                    className={`aspect-square w-48 cursor-pointer transition-all ${
+                      meta.available
+                        ? "hover:border-primary/50 hover:shadow-md"
+                        : "cursor-default opacity-50"
+                    }`}
+                    onClick={() => meta.available && selectCase(meta.slug)}
+                  >
+                    <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                      <span className="text-4xl">{meta.icon}</span>
+                      <span className="text-sm font-semibold">{meta.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {meta.available ? meta.description : "Скоро"}
+                      </span>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
             <div className="my-2 w-full border-t" />
             <a
@@ -261,24 +219,34 @@ function PageContent() {
         ) : (
           <>
             {step === 1 && (
-              <StepChat caseSlug={caseSlug!} onComplete={() => goToStep(2)} />
+              <ScenarioStep
+                slug={caseSlug!}
+                step={1}
+                onComplete={() => goToStep(2)}
+              />
             )}
             {step === 2 && (
-              <StepMimLua
-                caseSlug={caseSlug!}
-                onNext={() => goToStep(3)}
+              <ScenarioStep
+                slug={caseSlug!}
+                step={2}
                 onBack={() => goToStep(1)}
+                onNext={() => goToStep(3)}
               />
             )}
             {step === 3 && (
-              <StepDataTable
-                caseSlug={caseSlug!}
-                onNext={() => goToStep(4)}
+              <ScenarioStep
+                slug={caseSlug!}
+                step={3}
                 onBack={() => goToStep(2)}
+                onNext={() => goToStep(4)}
               />
             )}
             {step === 4 && (
-              <StepProcessing caseSlug={caseSlug!} onBack={() => goToStep(3)} />
+              <ScenarioStep
+                slug={caseSlug!}
+                step={4}
+                onBack={() => goToStep(3)}
+              />
             )}
           </>
         )}
