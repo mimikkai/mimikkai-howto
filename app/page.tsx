@@ -7,6 +7,7 @@ import { StepMimLua } from "@/components/step-mim-lua"
 import { StepDataTable } from "@/components/step-data-table"
 import { StepProcessing } from "@/components/step-processing"
 import { Card, CardContent } from "@/components/ui/card"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -129,7 +130,7 @@ function PageContent() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2">
             <span
               className="flex cursor-pointer items-center gap-2 text-lg font-bold"
@@ -152,18 +153,11 @@ function PageContent() {
               </svg>
               MimikkAi
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="hidden text-xs text-muted-foreground sm:inline">
               Интерактивное демо
             </span>
           </div>
-          <a
-            href="https://mimikkai.ru"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-          >
-            mimikkai.ru
-          </a>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -255,7 +249,19 @@ function PageContent() {
             {step === 4 && <StepProcessing onBack={() => goToStep(3)} />}
           </>
         )}
-      </main>
-    </div>
+       </main>
+        <footer className="border-t bg-background">
+          <div className="mx-auto flex max-w-6xl items-center justify-center px-3 py-2 sm:px-6 sm:py-3">
+            <a
+              href="https://mimikkai.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+            >
+              mimikkai.ru
+            </a>
+          </div>
+        </footer>
+      </div>
   )
 }

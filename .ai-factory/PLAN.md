@@ -1,4 +1,4 @@
-# Implementation Plan: Мобильная адаптация StepProcessing (tabs)
+# Implementation Plan: Переключатель темы (segmented control с иконками)
 
 Branch: none
 Created: 2026-06-10
@@ -9,23 +9,18 @@ Created: 2026-06-10
 - Docs: no
 
 ## Context
-StepProcessing — 3 панели (Таблица, Чат, Браузер) в grid-cols-3. На мобильном стакаются вертикально (~1500px высота). Нужен tabs-паттерн: десктоп — все 3 видны, мобильный — табы переключают панели. activePane уже существует и авто-переключается; добавить userTouchedTab чтобы уважать ручной выбор.
+В верхнем правом углу header добавить segmented control с 3 режимами темы: Системная / Тёмная / Светлая. Иконки: Monitor (🖥️), Moon (🌙), Sun (☀️) — inline SVG без новых зависимостей. next-themes уже подключен, useTheme() доступен. Dropdown-menu компонента нет — используем простой segmented control из кнопок.
 
 ## Tasks
 
-### Phase 1: Tabs UI + Responsive Layout
-- [x] Task 1: Добавить tab-кнопки в `StepProcessing` — строка с 3 кнопками (📊 Таблица, 🤖 Чат ИИ, 🌐 Браузер). На десктопе — визуальный индикатор активной панели. На мобильном — переключатель. Breakpoint: `md` (768px).
-  - Files: `components/step-processing.tsx`
+### Phase 1: Компонент переключателя темы
+- [x] Task 1: Создать компонент `components/theme-toggle.tsx` — клиентский ("use client"), использует `useTheme()` из next-themes. Segmented control: 3 кнопки с inline SVG иконками (Monitor, Moon, Sun). Активная кнопка подсвечивается (`bg-muted` или `bg-primary/10`). Гидратация: рендерить пустышку до mount, после — реальный toggle. Скрыть на `mounted === false`.
+  - Files: `components/theme-toggle.tsx`
 
-- [x] Task 2: Рефакторинг layout — десктоп: `md:grid-cols-3` как сейчас, все панели видны. Мобильный: показывать только `activePane`, остальные `hidden md:flex`. Убрать фиксированные `h-[460px]` на ScrollArea → `md:h-[460px] h-[calc(100dvh-320px)]` с динамической высотой.
-  - Files: `components/step-processing.tsx`
+### Phase 2: Интеграция в header
+- [x] Task 2: Добавить `<ThemeToggle />` в header `app/page.tsx` — справа от ссылки `mimikkai.ru`. Обернуть правую часть в flex-контейнер с gap. PageContent — уже "use client", проблем нет.
+  - Files: `app/page.tsx`
 
-- [x] Task 3: Добавить стейт `userTouchedTab` — при ручном клике на таб установить `true`. Авто-переключение через `setAgentActivePane` проверяет `userTouchedTabRef.current`: если true — не переключать, но подсветить таб индикатором (dot). При остановке/завершении агента — сбросить `userTouchedTab`.
-  - Files: `components/step-processing.tsx`
-
-### Phase 2: Mobile Polish
-- [x] Task 4: Исправить высоту ScrollArea — заменить `h-[460px]` на адаптивную высоту. На мобильном контейнер занимает `calc(100dvh - 320px)`.
-  - Files: `components/step-processing.tsx`
-
-- [x] Task 5: Минорные мобильные фиксы на шагах 1-3 — StepChat: уменьшить кнопку `px-6 py-5 text-base sm:px-8 sm:py-6 sm:text-lg`. StepMimLua: стекать вход/выход вертикально на <640px через `flex-col sm:flex-row`. StepDataTable: скрыть колонку цена на мобильном через `hidden sm:table-cell`.
-  - Files: `components/step-chat.tsx`, `components/step-mim-lua.tsx`, `components/step-data-table.tsx`
+### Phase 3: Чистка
+- [x] Task 3: Удалить ThemeHotkey из `components/theme-provider.tsx` — хоткей `d` заменён визуальным переключателем. Оставить только ThemeProvider обёртку.
+  - Files: `components/theme-provider.tsx`
