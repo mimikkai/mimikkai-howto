@@ -259,6 +259,8 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [isDone, setIsDone] = React.useState(false)
   const [chat, setChat] = React.useState<ChatMessage[]>([])
   const [urlFlash, setUrlFlash] = React.useState(false)
+  const [activePane, setActivePane] = React.useState<0 | 1 | 2>(0)
+  const [tableFlash, setTableFlash] = React.useState(false)
 
   const dataRef = React.useRef(data)
   dataRef.current = data
@@ -298,10 +300,6 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
     const markets = pickMarkets()
     const googleQuery = product + " цена купить"
 
-    setData((prev) =>
-      prev.map((row, i) => (i === nextIdx ? { ...row, status: "обработка" as const } : row))
-    )
-
     const searchResults = found ? generateSearchResults(product, price) : []
     const marketItems1 = found ? generateMarketItems(product, price) : []
     const marketItems2 = found ? generateMarketItems(product, price) : []
@@ -310,8 +308,26 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       if (isRunningRef.current) fn()
     }, ms)
 
-    // 1. Open Google, start typing
+    // STEP 1: Read from table
     schedule(() => {
+      setActivePane(0)
+      setTableFlash(true)
+      setTimeout(() => setTableFlash(false), 600)
+      setData((prev) =>
+        prev.map((row, i) => (i === nextIdx ? { ...row, status: "обработка" as const } : row))
+      )
+      addChat("agent", `📋 Беру данные из таблицы: строка ${nextIdx + 1} — "${product}"`)
+    }, 100)
+
+    // Pause to show table highlight
+    schedule(() => {
+      setActivePane(1)
+      addChat("agent", `🔍 Начинаю поиск цены для "${product}"`)
+    }, 1500)
+
+    // STEP 2: Open Google, start typing
+    schedule(() => {
+      setActivePane(2)
       setBrowser({
         phase: "typing",
         tabs: [{ title: "Google", url: "https://www.google.com/", active: true }],
@@ -325,10 +341,9 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 0,
         highlightedItem: -1,
       })
-      addChat("agent",`🔍 [${nextIdx + 1}/${dataRef.current.length}] ${product}`)
-    }, 100)
+    }, 2000)
 
-    // 2. Typing animation
+    // Typing animation
     let charIdx = 0
     const typingInterval = setInterval(() => {
       if (!isRunningRef.current) { clearInterval(typingInterval); return }
@@ -338,9 +353,9 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         typedQuery: googleQuery.slice(0, charIdx),
       }))
       if (charIdx >= googleQuery.length) clearInterval(typingInterval)
-    }, 40)
+    }, 50)
 
-    // 3. Google loading after typing
+    // Google loading after typing
     schedule(() => {
       flashUrl()
       setBrowser((prev) => ({
@@ -350,10 +365,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         tabs: [{ title: `${googleQuery} — Google`, url: `https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`, active: true }],
         loadingProgress: 30,
       }))
-      addChat("agent",`  ↳ Поиск в Google...`)
-    }, 1200)
+      addChat("agent", `🌐 Ищу в Google: "${googleQuery}"`)
+    }, 3500)
 
-    // 4. Google results appear
+    // Google results appear
     schedule(() => {
       setBrowser((prev) => ({
         ...prev,
@@ -361,20 +376,20 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         searchResults: found ? searchResults : searchResults.slice(0, 1),
       }))
-      if (found) addChat("agent",`  ↳ Найдено ${searchResults.length} результатов`)
-    }, 1800)
+      if (found) addChat("agent", `✓ Google нашёл ${searchResults.length} результатов`)
+    }, 5000)
 
-    // 5. Click first result — page transition
+    // Click first result
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({
         ...prev,
         phase: "click_result",
       }))
-      addChat("agent",`  ↳ Кликаю на результат: ${markets[0].name}`)
-    }, 2400)
+      addChat("agent", `👆 Перехожу на ${markets[0].name}...`)
+    }, 6500)
 
-    // 6. Navigating to market
+    // Navigating to market
     schedule(() => {
       if (!found) return
       flashUrl()
@@ -394,21 +409,20 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 15,
         highlightedItem: -1,
       })
-      addChat("agent",`  ↳ Перехожу на ${markets[0].name}...`)
-    }, 2800)
+    }, 7500)
 
-    // 7. Market loading progress
+    // Market loading progress
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({ ...prev, phase: "market_loading", loadingProgress: 50 }))
-    }, 3000)
+    }, 8500)
 
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({ ...prev, loadingProgress: 80 }))
-    }, 3400)
+    }, 9500)
 
-    // 8. Market page loaded
+    // Market page loaded
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({
@@ -418,10 +432,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         highlightedItem: -1,
       }))
-      addChat("agent",`  ↳ Страница загружена`)
-    }, 3800)
+      addChat("agent", `📄 ${markets[0].name} загружен, ищу цену...`)
+    }, 10500)
 
-    // 9. Highlight best price
+    // Highlight best price
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({
@@ -429,10 +443,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         phase: "market_highlight",
         highlightedItem: 0,
       }))
-      addChat("agent",`  ↳ Нашёл товар, проверяю цену...`)
-    }, 4400)
+      addChat("agent", `💰 Нашёл цену на ${markets[0].name}`)
+    }, 12000)
 
-    // 10. Switch to second market tab
+    // Switch to second market tab
     schedule(() => {
       if (!found) return
       flashUrl()
@@ -449,16 +463,16 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         highlightedItem: -1,
         loadingProgress: 20,
       }))
-      addChat("agent",`  ↳ Переключаюсь на ${markets[1].name}...`)
-    }, 5000)
+      addChat("agent", `🔄 Проверяю ${markets[1].name} для сравнения...`)
+    }, 13500)
 
-    // 11. Second market loading
+    // Second market loading
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({ ...prev, phase: "market2_loading", loadingProgress: 60 }))
-    }, 5300)
+    }, 14500)
 
-    // 12. Second market page
+    // Second market page
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({
@@ -468,10 +482,9 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         highlightedItem: -1,
       }))
-      addChat("agent",`  ↳ ${markets[1].name} загружен`)
-    }, 5700)
+    }, 15500)
 
-    // 13. Highlight on second market
+    // Highlight on second market
     schedule(() => {
       if (!found) return
       setBrowser((prev) => ({
@@ -479,10 +492,11 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         phase: "market_highlight",
         highlightedItem: 0,
       }))
-    }, 6100)
+    }, 16500)
 
-    // 14. Price confirmed
+    // Price confirmed
     schedule(() => {
+      setActivePane(1)
       setBrowser((prev) => ({
         ...prev,
         phase: "price_found",
@@ -490,21 +504,28 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         highlightedItem: -1,
       }))
       if (found) {
-        addChat("agent",`  ✅ Цена: ${price}`)
+        addChat("agent", `✅ Цена подтверждена: ${price}`)
       } else {
-        addChat("agent",`  ❌ Цена не найдена`)
+        addChat("agent", `❌ Цена не найдена`)
       }
-    }, 6500)
+    }, 18000)
 
-    // 15. Writing to table
+    // STEP 3: Writing to table
     schedule(() => {
+      setActivePane(1)
       setBrowser((prev) => ({
         ...prev,
         phase: "writing",
       }))
-    }, 7000)
+      addChat("agent", `📝 Записываю результат в таблицу...`)
+    }, 19500)
 
-    // 16. Done, next
+    schedule(() => {
+      setActivePane(0)
+      setTableFlash(true)
+    }, 20200)
+
+    // Done, next
     schedule(() => {
       setData((prev) =>
         prev.map((row, i) =>
@@ -513,9 +534,11 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
             : row
         )
       )
+      setTimeout(() => setTableFlash(false), 600)
       setBrowser({ ...IDLE_BROWSER })
+      setActivePane(0)
       processNext()
-    }, 7500)
+    }, 21000)
   }, [addChat, flashUrl])
 
   const handleStart = React.useCallback(() => {
@@ -577,7 +600,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       </div>
 
       <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-3 lg:grid-cols-3">
-        <Card className="min-h-0 flex flex-col">
+        <Card className={`min-h-0 flex flex-col transition-all duration-300 ${activePane === 0 && isRunning ? "ring-2 ring-emerald-500/30 shadow-md" : ""}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <span className="inline-flex size-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white">📊</span>
@@ -601,17 +624,20 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                 <tbody>
                   {data.map((row) => {
                     const isActive = row.id - 1 === currentIndex && isRunning
+                    const justUpdated = tableFlash && isActive
                     return (
                       <tr
                         key={row.id}
                         className={`border-b transition-all duration-300 ${
-                          isActive
-                            ? "bg-primary/10"
-                            : row.status === "найдено"
-                              ? "bg-emerald-500/5"
-                              : row.status === "не найдено"
-                                ? "bg-red-500/5"
-                                : "hover:bg-muted/50"
+                          justUpdated
+                            ? "bg-emerald-500/20 shadow-sm"
+                            : isActive
+                              ? "bg-primary/10"
+                              : row.status === "найдено"
+                                ? "bg-emerald-500/5"
+                                : row.status === "не найдено"
+                                  ? "bg-red-500/5"
+                                  : "hover:bg-muted/50"
                         }`}
                       >
                         <td className="px-1.5 py-1 text-muted-foreground">{row.id}</td>
@@ -629,7 +655,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
           </CardContent>
         </Card>
 
-        <Card className="min-h-0 flex flex-col">
+        <Card className={`min-h-0 flex flex-col transition-all duration-300 ${activePane === 1 && isRunning ? "ring-2 ring-purple-500/30 shadow-md" : ""}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <span className="inline-flex size-5 items-center justify-center rounded-full bg-purple-600 text-[10px] text-white">🤖</span>
@@ -678,20 +704,39 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
           </CardContent>
         </Card>
 
-        <Card className="min-h-0 flex flex-col">
+        <Card className={`min-h-0 flex flex-col transition-all duration-300 ${activePane === 2 && isRunning ? "ring-2 ring-blue-500/30 shadow-md" : ""}`}>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
-                Браузер
+            <div>
+              <CardTitle className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
+                  Браузер
+                  {browser.phase !== "idle" && (
+                    <span className="animate-pulse text-[10px] text-blue-500">●</span>
+                  )}
+                </div>
                 {browser.phase !== "idle" && (
-                  <span className="animate-pulse text-[10px] text-blue-500">●</span>
+                  <span className="text-[10px] text-muted-foreground">{phaseLabel[browser.phase]}</span>
                 )}
-              </div>
-              {browser.phase !== "idle" && (
-                <span className="text-[10px] text-muted-foreground">{phaseLabel[browser.phase]}</span>
-              )}
-            </CardTitle>
+              </CardTitle>
+              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                {browser.phase === "idle"
+                  ? "ИИ-агент управляет браузером через MCP Playwright для поиска цен"
+                  : browser.phase === "typing" || browser.phase === "google_loading"
+                    ? "ИИ-агент вводит поисковый запрос в Google"
+                    : browser.phase === "google_results" || browser.phase === "click_result"
+                      ? "ИИ-агент анализирует результаты и переходит на маркетплейс"
+                      : browser.phase.startsWith("market") || browser.phase === "market2_loading" || browser.phase === "market2_page"
+                        ? "ИИ-агент ищет товар и проверяет цену на маркетплейсе"
+                        : browser.phase === "tab_switch"
+                          ? "ИИ-агент переключается на другой маркетплейс для сравнения"
+                          : browser.phase === "price_found"
+                            ? "ИИ-агент подтвердил цену и готов записать результат"
+                            : browser.phase === "page_transition"
+                              ? "ИИ-агент переходит на страницу маркетплейса"
+                              : "ИИ-агент записывает найденную цену в таблицу данных"}
+              </p>
+            </div>
           </CardHeader>
           <CardContent className="min-h-0 flex-1">
             <div className="overflow-hidden rounded-lg border shadow-sm bg-background">
@@ -717,7 +762,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                 </div>
               </div>
 
-              <div className="min-h-[180px] max-h-[360px] overflow-y-auto bg-background p-2.5">
+              <div className="h-[300px] overflow-y-auto bg-background p-2.5">
 
                   {/* IDLE */}
                   {browser.phase === "idle" && !isDone && (
