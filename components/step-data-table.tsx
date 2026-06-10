@@ -21,16 +21,16 @@ interface DataRow {
 
 const PRODUCTS = [
   "iPhone 15 Pro Max 256GB",
-  "MacBook Air M3 15\"",
+  'MacBook Air M3 15"',
   "Samsung Galaxy S24 Ultra",
   "PlayStation 5 Slim",
   "Nintendo Switch OLED",
   "Xbox Series X",
-  "iPad Pro 11\" M4",
+  'iPad Pro 11" M4',
   "AirPods Pro 2",
   "Dyson V15 Detect",
   "Sony WH-1000XM5",
-  "LG OLED C4 65\"",
+  'LG OLED C4 65"',
   "Bose QuietComfort Ultra",
   "Canon EOS R6 Mark II",
   "GoPro Hero 12 Black",
@@ -68,8 +68,8 @@ const PRODUCTS = [
   "Elgato Stream Deck MK.2",
   "Logitech MX Master 3S",
   "Keychron Q1 Pro",
-  "Samsung 49\" Odyssey G9",
-  "LG 27\" UltraFine 5K",
+  'Samsung 49" Odyssey G9',
+  'LG 27" UltraFine 5K',
   "BenQ PD3220U",
   "ASUS ProArt PA32UCG-K",
   "Dell U3223QE",
@@ -171,7 +171,9 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
 
   React.useEffect(() => {
     if (isFilling && scrollRef.current) {
-      const scrollEl = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]")
+      const scrollEl = scrollRef.current.querySelector(
+        "[data-radix-scroll-area-viewport]"
+      )
       if (scrollEl) {
         scrollEl.scrollTop = scrollEl.scrollHeight
       }
@@ -179,9 +181,9 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
   }, [data, isFilling])
 
   const statusColor: Record<string, string> = {
-    "ожидает": "bg-gray-500/15 text-gray-600 dark:text-gray-400",
-    "обработка": "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-    "найдено": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
+    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    найдено: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     "не найдено": "bg-red-500/15 text-red-700 dark:text-red-400",
   }
 
@@ -192,13 +194,14 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         <h2 className="text-lg font-semibold">Таблица данных</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Тестовые данные для обработки — 100 товаров. ИИ-агент будет брать название из колонки A, искать цену через браузер и заполнять результат.
+        Тестовые данные для обработки — 100 товаров. ИИ-агент будет брать
+        название из колонки A, искать цену через браузер и заполнять результат.
       </p>
 
       {(isFilling || (isFilled && data.length > 0)) && (
         <div className="flex items-center gap-3">
           <Progress value={fillProgress} className="flex-1" />
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {data.length}/{PRODUCTS.length} строк
           </span>
         </div>
@@ -208,7 +211,9 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-sm">
             <span>Данные для обработки</span>
-            <span className="text-xs text-muted-foreground">{data.length} строк</span>
+            <span className="text-xs text-muted-foreground">
+              {data.length} строк
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="min-h-0 pb-0">
@@ -236,7 +241,9 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium">Нет данных</p>
-                <p className="text-xs">Нажмите кнопку ниже, чтобы заполнить таблицу</p>
+                <p className="text-xs">
+                  Нажмите кнопку ниже, чтобы заполнить таблицу
+                </p>
               </div>
             </div>
           ) : (
@@ -245,27 +252,40 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                 <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="w-12 px-3 py-2 font-medium">#</th>
-                    <th className="px-3 py-2 font-medium">A — Название товара</th>
+                    <th className="px-3 py-2 font-medium">
+                      A — Название товара
+                    </th>
                     <th className="w-36 px-3 py-2 font-medium">B — Цена</th>
                     <th className="w-28 px-3 py-2 font-medium">C — Статус</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((row, index) => {
-                    const isNew = index >= data.length - lastAddedCount && isFilling
+                    const isNew =
+                      index >= data.length - lastAddedCount && isFilling
                     return (
                       <tr
                         key={row.id}
                         className={`border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
-                        style={isNew ? { animationDelay: `${(index % BATCH_SIZE) * 40}ms` } : undefined}
+                        style={
+                          isNew
+                            ? {
+                                animationDelay: `${(index % BATCH_SIZE) * 40}ms`,
+                              }
+                            : undefined
+                        }
                       >
-                        <td className="px-3 py-2 text-muted-foreground">{row.id}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {row.id}
+                        </td>
                         <td className="px-3 py-2 font-medium">{row.product}</td>
                         <td className="px-3 py-2 text-muted-foreground">
                           {row.price || "—"}
                         </td>
                         <td className="px-3 py-2">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor[row.status]}`}
+                          >
                             {row.status}
                           </span>
                         </td>

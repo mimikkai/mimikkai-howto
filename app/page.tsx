@@ -29,14 +29,16 @@ const CASES: CaseConfig[] = [
   {
     slug: "email-outreach",
     title: "Email рассылка",
-    description: "Массовая email-рассылка компаниям с персонализированными предложениями",
+    description:
+      "Массовая email-рассылка компаниям с персонализированными предложениями",
     icon: "📧",
     available: false,
   },
   {
     slug: "order-processing",
     title: "Обработка заказов",
-    description: "Автоматическая обработка и статус-обновление входящих заказов",
+    description:
+      "Автоматическая обработка и статус-обновление входящих заказов",
     icon: "📦",
     available: false,
   },
@@ -130,10 +132,24 @@ function PageContent() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2">
             <span
-              className="cursor-pointer flex items-center gap-2 text-lg font-bold"
+              className="flex cursor-pointer items-center gap-2 text-lg font-bold"
               onClick={() => router.push(pathname)}
             >
-              <svg width="24" height="22" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0"><path d="M31.8496 0.150391V24.3906L26.292 29.8496H23.6797V16.7969L23.4219 17.0605L16.1504 24.4971V21.7861L26.2031 11.7402V26.6143L26.4609 26.3477L29.2842 23.4297L29.3262 23.3867V3.9668L29.0703 4.22461L16.1504 17.2217V13.5098L29.2383 0.150391H31.8496ZM2.76172 0.150391L15.8496 13.5098V17.2217L2.92969 4.22461L2.67383 3.9668V23.3867L2.71582 23.4297L5.53906 26.3477L5.79688 26.6143V11.7402L15.8496 21.7861V24.4971L8.57812 17.0605L8.32031 16.7969V29.8496H5.70801L0.150391 24.3906V0.150391H2.76172Z" fill="currentColor" stroke="currentColor" strokeWidth="0.3"/></svg>
+              <svg
+                width="24"
+                height="22"
+                viewBox="0 0 32 30"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="shrink-0"
+              >
+                <path
+                  d="M31.8496 0.150391V24.3906L26.292 29.8496H23.6797V16.7969L23.4219 17.0605L16.1504 24.4971V21.7861L26.2031 11.7402V26.6143L26.4609 26.3477L29.2842 23.4297L29.3262 23.3867V3.9668L29.0703 4.22461L16.1504 17.2217V13.5098L29.2383 0.150391H31.8496ZM2.76172 0.150391L15.8496 13.5098V17.2217L2.92969 4.22461L2.67383 3.9668V23.3867L2.71582 23.4297L5.53906 26.3477L5.79688 26.6143V11.7402L15.8496 21.7861V24.4971L8.57812 17.0605L8.32031 16.7969V29.8496H5.70801L0.150391 24.3906V0.150391H2.76172Z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  strokeWidth="0.3"
+                />
+              </svg>
               MimikkAi
             </span>
             <span className="text-xs text-muted-foreground">
@@ -174,7 +190,7 @@ function PageContent() {
                       step !== null && s === step
                         ? "bg-primary text-primary-foreground"
                         : step !== null && s < step
-                          ? "bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                          ? "cursor-pointer bg-primary/10 text-primary hover:bg-primary/20"
                           : "text-muted-foreground"
                     }`}
                     disabled={step === null || s > step}
@@ -190,7 +206,7 @@ function PageContent() {
         </nav>
       )}
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col min-h-0 px-6 py-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-6 py-6">
         {isLanding ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-8">
             <div className="text-center">
@@ -236,11 +252,7 @@ function PageContent() {
                 onBack={() => goToStep(2)}
               />
             )}
-            {step === 4 && (
-              <StepProcessing
-                onBack={() => goToStep(3)}
-              />
-            )}
+            {step === 4 && <StepProcessing onBack={() => goToStep(3)} />}
           </>
         )}
       </main>
