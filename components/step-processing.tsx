@@ -239,6 +239,11 @@ const IDLE_BROWSER: BrowserState = {
   highlightedItem: -1,
 }
 
+interface ChatMessage {
+  role: "agent" | "system"
+  content: string
+}
+
 export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [data, setData] = React.useState<DataRow[]>(() =>
     PRODUCTS.map((product, i) => ({
@@ -252,7 +257,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [isRunning, setIsRunning] = React.useState(false)
   const [isDone, setIsDone] = React.useState(false)
-  const [logs, setLogs] = React.useState<string[]>([])
+  const [chat, setChat] = React.useState<ChatMessage[]>([])
   const [urlFlash, setUrlFlash] = React.useState(false)
 
   const dataRef = React.useRef(data)
@@ -262,8 +267,8 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   isRunningRef.current = isRunning
 
-  const addLog = React.useCallback((msg: string) => {
-    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString("ru-RU")} ${msg}`])
+  const addChat = React.useCallback((role: "agent" | "system", content: string) => {
+    setChat((prev) => [...prev, { role, content }])
   }, [])
 
   const processedCount = data.filter((r) => r.status === "найдено" || r.status === "не найдено").length
@@ -281,7 +286,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
     if (nextIdx >= dataRef.current.length) {
       setIsRunning(false)
       setIsDone(true)
-      addLog("✅ Все строки обработаны.")
+      addChat("system", "✅ Все строки обработаны.")
       setBrowser({ ...IDLE_BROWSER })
       return
     }
@@ -320,7 +325,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 0,
         highlightedItem: -1,
       })
-      addLog(`🔍 [${nextIdx + 1}/${dataRef.current.length}] ${product}`)
+      addChat("agent",`🔍 [${nextIdx + 1}/${dataRef.current.length}] ${product}`)
     }, 100)
 
     // 2. Typing animation
@@ -345,7 +350,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         tabs: [{ title: `${googleQuery} — Google`, url: `https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`, active: true }],
         loadingProgress: 30,
       }))
-      addLog(`  ↳ Поиск в Google...`)
+      addChat("agent",`  ↳ Поиск в Google...`)
     }, 1200)
 
     // 4. Google results appear
@@ -356,7 +361,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         searchResults: found ? searchResults : searchResults.slice(0, 1),
       }))
-      if (found) addLog(`  ↳ Найдено ${searchResults.length} результатов`)
+      if (found) addChat("agent",`  ↳ Найдено ${searchResults.length} результатов`)
     }, 1800)
 
     // 5. Click first result — page transition
@@ -366,7 +371,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         ...prev,
         phase: "click_result",
       }))
-      addLog(`  ↳ Кликаю на результат: ${markets[0].name}`)
+      addChat("agent",`  ↳ Кликаю на результат: ${markets[0].name}`)
     }, 2400)
 
     // 6. Navigating to market
@@ -389,7 +394,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 15,
         highlightedItem: -1,
       })
-      addLog(`  ↳ Перехожу на ${markets[0].name}...`)
+      addChat("agent",`  ↳ Перехожу на ${markets[0].name}...`)
     }, 2800)
 
     // 7. Market loading progress
@@ -413,7 +418,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         highlightedItem: -1,
       }))
-      addLog(`  ↳ Страница загружена`)
+      addChat("agent",`  ↳ Страница загружена`)
     }, 3800)
 
     // 9. Highlight best price
@@ -424,7 +429,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         phase: "market_highlight",
         highlightedItem: 0,
       }))
-      addLog(`  ↳ Нашёл товар, проверяю цену...`)
+      addChat("agent",`  ↳ Нашёл товар, проверяю цену...`)
     }, 4400)
 
     // 10. Switch to second market tab
@@ -444,7 +449,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         highlightedItem: -1,
         loadingProgress: 20,
       }))
-      addLog(`  ↳ Переключаюсь на ${markets[1].name}...`)
+      addChat("agent",`  ↳ Переключаюсь на ${markets[1].name}...`)
     }, 5000)
 
     // 11. Second market loading
@@ -463,7 +468,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         loadingProgress: 100,
         highlightedItem: -1,
       }))
-      addLog(`  ↳ ${markets[1].name} загружен`)
+      addChat("agent",`  ↳ ${markets[1].name} загружен`)
     }, 5700)
 
     // 13. Highlight on second market
@@ -485,9 +490,9 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         highlightedItem: -1,
       }))
       if (found) {
-        addLog(`  ✅ Цена: ${price}`)
+        addChat("agent",`  ✅ Цена: ${price}`)
       } else {
-        addLog(`  ❌ Цена не найдена`)
+        addChat("agent",`  ❌ Цена не найдена`)
       }
     }, 6500)
 
@@ -511,20 +516,20 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       setBrowser({ ...IDLE_BROWSER })
       processNext()
     }, 7500)
-  }, [addLog, flashUrl])
+  }, [addChat, flashUrl])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
     isRunningRef.current = true
-    addLog("🚀 Агент запущен.")
+    addChat("agent", "🚀 Агент запущен.")
     setTimeout(processNext, 300)
-  }, [addLog, processNext])
+  }, [addChat, processNext])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
     isRunningRef.current = false
-    addLog("⏸ Пауза.")
-  }, [addLog])
+    addChat("agent", "⏸ Пауза.")
+  }, [addChat])
 
   const activeMarket = MARKETPLACES.find((m) => m.name === browser.currentPage)
 
@@ -571,7 +576,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         )}
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-3 lg:grid-cols-3">
         <Card className="min-h-0 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -587,10 +592,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="w-10 px-2 py-1.5 font-medium">#</th>
-                    <th className="px-2 py-1.5 font-medium">Название</th>
-                    <th className="w-28 px-2 py-1.5 font-medium">Цена</th>
-                    <th className="w-24 px-2 py-1.5 font-medium">Статус</th>
+                    <th className="w-8 px-1.5 py-1 font-medium">#</th>
+                    <th className="px-1.5 py-1 font-medium">Название</th>
+                    <th className="w-24 px-1.5 py-1 font-medium">Цена</th>
+                    <th className="w-20 px-1.5 py-1 font-medium">Статус</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -609,10 +614,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                                 : "hover:bg-muted/50"
                         }`}
                       >
-                        <td className="px-2 py-1.5 text-muted-foreground">{row.id}</td>
-                        <td className="px-2 py-1.5 font-medium">{row.product}</td>
-                        <td className="px-2 py-1.5">{row.price || "—"}</td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-1.5 py-1 text-muted-foreground">{row.id}</td>
+                        <td className="px-1.5 py-1 font-medium">{row.product}</td>
+                        <td className="px-1.5 py-1">{row.price || "—"}</td>
+                        <td className="px-1.5 py-1">
                           <StatusBadge status={row.status} />
                         </td>
                       </tr>
@@ -624,61 +629,95 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
           </CardContent>
         </Card>
 
-        <div className="flex min-h-0 flex-col gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
-                  Chrome + MCP Playwright
-                  {browser.phase !== "idle" && (
-                    <span className="animate-pulse text-[10px] text-blue-500">●</span>
-                  )}
-                </div>
-                {browser.phase !== "idle" && (
-                  <span className="text-[10px] text-muted-foreground animate-pulse">{phaseLabel[browser.phase]}</span>
+        <Card className="min-h-0 flex flex-col">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-purple-600 text-[10px] text-white">🤖</span>
+              Чат ИИ-агента
+              {isRunning && (
+                <span className="animate-pulse text-[10px] text-purple-500">●</span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="min-h-0 flex-1 pb-0">
+            <ScrollArea className="h-[460px] pr-2">
+              <div className="flex flex-col gap-2">
+                {chat.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                    <span className="text-3xl opacity-30">🤖</span>
+                    <p className="text-xs">Чат агента пуст</p>
+                  </div>
                 )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-hidden rounded-lg border shadow-sm bg-background">
-                {/* Tab bar */}
-                <div className="flex items-center border-b bg-muted/30 overflow-x-auto">
-                  {browser.tabs.map((tab, i) => (
+                {chat.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === "agent" ? "justify-start" : "justify-end"}`}
+                  >
                     <div
-                      key={i}
-                      className={`flex shrink-0 items-center gap-1.5 border-r px-3 py-1.5 text-[10px] transition-all duration-200 ${
-                        tab.active
-                          ? "bg-background font-medium text-foreground border-b-2 border-b-blue-500"
-                          : "text-muted-foreground hover:bg-muted/50"
+                      className={`max-w-[90%] rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
+                        msg.role === "agent"
+                          ? "bg-muted text-foreground"
+                          : "bg-primary/10 text-primary border border-primary/20"
                       }`}
                     >
-                      {tab.active && <span className="size-1.5 rounded-full bg-blue-500 animate-pulse" />}
-                      <span className="truncate max-w-[80px]">{tab.title}</span>
-                      <span className="text-muted-foreground/30">×</span>
+                      {msg.content}
                     </div>
-                  ))}
-                  <button className="px-2 py-1.5 text-muted-foreground/40 hover:text-muted-foreground text-xs">+</button>
-                </div>
-
-                {/* Address bar */}
-                <div className="flex items-center gap-1.5 border-b bg-muted/20 px-2 py-1">
-                  <button className="rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-                  </button>
-                  <button className="rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
-                  </button>
-                  <button className="rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                  </button>
-                  <div className={`flex-1 overflow-hidden rounded-md px-2 py-0.5 font-mono text-[10px] truncate transition-colors duration-200 ${urlFlash ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400" : "bg-background text-muted-foreground"} border`}>
-                    {browser.phase === "idle" ? "about:blank" : browser.url}
                   </div>
-                </div>
+                ))}
+                {isRunning && browser.phase !== "idle" && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1.5">
+                      <span className="animate-bounce text-[8px] text-muted-foreground" style={{ animationDelay: "0ms" }}>●</span>
+                      <span className="animate-bounce text-[8px] text-muted-foreground" style={{ animationDelay: "150ms" }}>●</span>
+                      <span className="animate-bounce text-[8px] text-muted-foreground" style={{ animationDelay: "300ms" }}>●</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
-                {/* Page content */}
-                <div className="min-h-[220px] bg-background p-3 relative overflow-hidden">
+        <Card className="min-h-0 flex flex-col">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
+                Браузер
+                {browser.phase !== "idle" && (
+                  <span className="animate-pulse text-[10px] text-blue-500">●</span>
+                )}
+              </div>
+              {browser.phase !== "idle" && (
+                <span className="text-[10px] text-muted-foreground">{phaseLabel[browser.phase]}</span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="min-h-0 flex-1">
+            <div className="overflow-hidden rounded-lg border shadow-sm bg-background">
+              <div className="flex items-center border-b bg-muted/30 overflow-x-auto">
+                {browser.tabs.map((tab, i) => (
+                  <div
+                    key={i}
+                    className={`flex shrink-0 items-center gap-1.5 border-r px-2 py-1 text-[9px] transition-all duration-200 ${
+                      tab.active
+                        ? "bg-background font-medium text-foreground border-b-2 border-b-blue-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {tab.active && <span className="size-1 rounded-full bg-blue-500 animate-pulse" />}
+                    <span className="truncate max-w-[60px]">{tab.title}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 border-b bg-muted/20 px-2 py-0.5">
+                <div className={`flex-1 overflow-hidden rounded px-1.5 py-0.5 font-mono text-[9px] truncate transition-colors duration-200 ${urlFlash ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400" : "bg-background text-muted-foreground"} border`}>
+                  {browser.phase === "idle" ? "about:blank" : browser.url}
+                </div>
+              </div>
+
+              <div className="min-h-[180px] max-h-[360px] overflow-y-auto bg-background p-2.5">
 
                   {/* IDLE */}
                   {browser.phase === "idle" && !isDone && (
@@ -918,40 +957,15 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                   )}
                 </div>
 
-                {/* Status bar */}
                 <div className="flex items-center justify-between border-t bg-muted/20 px-2 py-0.5 text-[9px] text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span className={browser.phase !== "idle" ? "text-emerald-500" : "text-muted-foreground/50"}>
-                      {browser.phase !== "idle" ? "●" : "○"} MCP Playwright
-                    </span>
-                    {browser.phase !== "idle" && (
-                      <span className="animate-pulse text-blue-500">active</span>
-                    )}
-                  </div>
+                  <span className={browser.phase !== "idle" ? "text-emerald-500" : "text-muted-foreground/50"}>
+                    {browser.phase !== "idle" ? "●" : "○"} MCP Playwright
+                  </span>
                   <span>{browser.phase !== "idle" ? `${currentIndex + 1}/${data.length}` : ""}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="min-h-0 flex-1">
-            <CardHeader>
-              <CardTitle className="text-xs">Лог агента</CardTitle>
-            </CardHeader>
-            <CardContent className="min-h-0 pb-0">
-              <ScrollArea className="h-[80px]">
-                <div className="flex flex-col gap-0.5 font-mono text-[10px]">
-                  {logs.length === 0 && (
-                    <p className="text-muted-foreground">Нажмите «Запуск» для начала</p>
-                  )}
-                  {logs.map((log, i) => (
-                    <div key={i} className="text-muted-foreground">{log}</div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       <div className="flex justify-between">
