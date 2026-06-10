@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
+import { PRODUCTS, THREADS_POSTS, EMAIL_CONTACTS, EmailContact } from "@/lib/case-config"
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,22 @@ interface ThreadsDataRow {
   status: "ожидает" | "обработка" | "Готово"
 }
 
+interface EmailDataRow {
+  id: number
+  sphere: string
+  senderName: string
+  caseUsed: string
+  company: string
+  site: string
+  email: string
+  phone: string
+  letter1: string
+  sendStatus: string
+  letter2: string
+  letter3: string
+  letter4: string
+}
+
 type BrowserPhase =
   | "idle"
   | "typing"
@@ -63,6 +79,16 @@ type BrowserPhase =
   | "threads_comment_publish"
   | "threads_published"
   | "threads_check"
+  | "email_yandex_home"
+  | "email_yandex_typing"
+  | "email_yandex_results"
+  | "email_company_click"
+  | "email_company_site"
+  | "email_contacts_page"
+  | "email_found"
+  | "email_compose"
+  | "email_send_click"
+  | "email_sent_confirmed"
 
 interface BrowserTab {
   title: string
@@ -103,6 +129,17 @@ interface BrowserState {
   threadsTypedComment: string
   threadsPostUrl: string
   threadsCheckResults: string[]
+  emailSearchQuery: string
+  emailTypedQuery: string
+  emailSearchResults: { title: string; url: string; snippet: string }[]
+  emailCompanyName: string
+  emailCompanySite: string
+  emailCompanyDesc: string
+  emailFoundEmail: string
+  emailFoundPhone: string
+  emailLetterSubject: string
+  emailLetterBody: string
+  emailTypedBody: string
 }
 
 const PRICE_RANGES: Record<string, [number, number]> = {
@@ -239,6 +276,17 @@ const IDLE_BROWSER: BrowserState = {
   threadsTypedComment: "",
   threadsPostUrl: "",
   threadsCheckResults: [],
+  emailSearchQuery: "",
+  emailTypedQuery: "",
+  emailSearchResults: [],
+  emailCompanyName: "",
+  emailCompanySite: "",
+  emailCompanyDesc: "",
+  emailFoundEmail: "",
+  emailFoundPhone: "",
+  emailLetterSubject: "",
+  emailLetterBody: "",
+  emailTypedBody: "",
 }
 
 interface ChatMessage {
@@ -248,6 +296,7 @@ interface ChatMessage {
 
 export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const isThreads = caseSlug === "threads-comments"
+  const isEmail = caseSlug === "email-outreach"
 
   const [priceData, setPriceData] = React.useState<DataRow[]>(() =>
     PRODUCTS.map((product, i) => ({
@@ -267,6 +316,23 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       status: "ожидает" as const,
     }))
   )
+  const [emailData, setEmailData] = React.useState<EmailDataRow[]>(() =>
+    EMAIL_CONTACTS.map((c, i) => ({
+      id: c.id,
+      sphere: c.sphere,
+      senderName: c.senderName,
+      caseUsed: c.caseUsed,
+      company: "",
+      site: "",
+      email: "",
+      phone: "",
+      letter1: "",
+      sendStatus: "ожидает",
+      letter2: "",
+      letter3: "",
+      letter4: "",
+    }))
+  )
   const [browser, setBrowser] = React.useState<BrowserState>(IDLE_BROWSER)
   const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [isRunning, setIsRunning] = React.useState(false)
@@ -278,7 +344,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const [agentPane, setAgentPane] = React.useState<0 | 1 | 2>(0)
   const [tableFlash, setTableFlash] = React.useState(false)
   const [chatFading, setChatFading] = React.useState(false)
-  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | null>(null)
+  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | EmailDataRow | null>(null)
 
   const setAgentActivePane = React.useCallback((pane: 0 | 1 | 2) => {
     setAgentPane(pane)
@@ -287,8 +353,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     }
   }, [])
 
-  const data = isThreads ? threadsData : priceData
-  const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
+  const data = isEmail ? emailData : isThreads ? threadsData : priceData
+  const totalRows = isEmail ? EMAIL_CONTACTS.length : isThreads ? THREADS_POSTS.length : PRODUCTS.length
 
   const priceDataRef = React.useRef(priceData)
   const currentIndexRef = React.useRef(currentIndex)
@@ -314,11 +380,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     []
   )
 
-  const processedCount = isThreads
-    ? threadsData.filter((r) => r.status === "Готово").length
-    : priceData.filter(
-        (r) => r.status === "найдено" || r.status === "не найдено"
-      ).length
+  const processedCount = isEmail
+    ? emailData.filter((r) => r.sendStatus === "Письмо отправлено и сохранено").length
+    : isThreads
+      ? threadsData.filter((r) => r.status === "Готово").length
+      : priceData.filter(
+          (r) => r.status === "найдено" || r.status === "не найдено"
+        ).length
   const progress = Math.round((processedCount / totalRows) * 100)
 
   const flashUrl = React.useCallback(() => {
@@ -936,11 +1004,266 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     }, 21500)
   }, [addChat, flashUrl, setAgentActivePane])
 
-  const processNext = isThreads ? processNextThreads : processNextPrice
+  const processNextEmail = React.useCallback(() => {
+    if (!isRunningRef.current) return
+
+    const nextIdx = currentIndexRef.current + 1
+    if (nextIdx >= EMAIL_CONTACTS.length) {
+      setIsRunning(false)
+      setIsDone(true)
+      addChat("system", "✅ Все строки обработаны.")
+      setBrowser({ ...IDLE_BROWSER })
+      return
+    }
+
+    setCurrentIndex(nextIdx)
+    const contact = EMAIL_CONTACTS[nextIdx]
+    const sphere = contact.sphere
+    const company = contact.company
+    const site = contact.site
+    const emailAddr = contact.email
+    const phone = contact.phone
+    const letterBody = contact.letter1
+    const subjectMatch = letterBody.match(/^Subject:\s*(.+)\n/)
+    const subject = subjectMatch ? subjectMatch[1] : "ai-агент под вашу рутину"
+    const bodyText = letterBody.replace(/^Subject:\s*.+\n\n?/, "")
+    const searchQuery = `компания ${sphere} ${company}`
+    const companyDesc = contact.letter1.match(/Мы внимательно изучили ваш сайт и видим\s*([^\.]+\.)/)?.[1] || "компания в сфере " + sphere
+
+    const searchResults = [
+      { title: `${company} — Официальный сайт`, url: site, snippet: `${company}. ${companyDesc} Контакты и информация.` },
+      { title: `${company} отзывы`, url: `https://reviews.ru/${encodeURIComponent(company.toLowerCase())}`, snippet: `Отзывы о ${company}. Рейтинг 4.5 из 5.` },
+      { title: `${company} контакты`, url: `${site}/contacts`, snippet: `Контактная информация ${company}. Email, телефон, адрес.` },
+      { title: `${sphere} компании — рейтинг`, url: `https://rating.ru/${encodeURIComponent(sphere.toLowerCase())}`, snippet: `Лучшие компании в сфере ${sphere}. Сравнение и отзывы.` },
+    ]
+
+    const schedule = (fn: () => void, ms: number) =>
+      setTimeout(() => {
+        if (isRunningRef.current) fn()
+      }, ms)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      setChatFading(true)
+    }, 0)
+
+    schedule(() => {
+      setChat([])
+      setChatFading(false)
+    }, 400)
+
+    schedule(() => {
+      setAgentActivePane(0)
+      setTableFlash(true)
+      setTimeout(() => setTableFlash(false), 600)
+      setEmailData((prev) =>
+        prev.map((row, i) =>
+          i === nextIdx ? { ...row, sendStatus: "обработка" } : row
+        )
+      )
+      addChat("divider", `Строка ${nextIdx + 1}`)
+      addChat("agent", `📋 Беру сферу из таблицы: "${sphere}"`)
+    }, 700)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      addChat("agent", `🔍 Начинаю поиск компании в сфере ${sphere}`)
+    }, 1500)
+
+    schedule(() => {
+      setAgentActivePane(2)
+      setBrowser({
+        ...IDLE_BROWSER,
+        phase: "email_yandex_home",
+        tabs: [
+          { title: "Яндекс", url: "https://ya.ru/", active: true },
+        ],
+        url: "https://ya.ru/",
+        currentPage: "yandex",
+        emailSearchQuery: searchQuery,
+      })
+    }, 2000)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_yandex_typing",
+      }))
+
+      let charIdx = 0
+      const typingInterval = setInterval(() => {
+        if (!isRunningRef.current) {
+          clearInterval(typingInterval)
+          return
+        }
+        charIdx++
+        setBrowser((prev) => ({
+          ...prev,
+          emailTypedQuery: searchQuery.slice(0, charIdx),
+        }))
+        if (charIdx >= searchQuery.length) clearInterval(typingInterval)
+      }, 50)
+    }, 3500)
+
+    schedule(() => {
+      flashUrl()
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_yandex_results",
+        url: `https://yandex.ru/search/?text=${encodeURIComponent(searchQuery)}`,
+        tabs: [
+          {
+            title: `${searchQuery} — Яндекс`,
+            url: `https://yandex.ru/search/?text=${encodeURIComponent(searchQuery)}`,
+            active: true,
+          },
+        ],
+        emailSearchResults: searchResults,
+      }))
+      addChat("agent", `🌐 Ищу в Яндексе: "${searchQuery}"`)
+    }, 4500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_company_click",
+      }))
+      addChat("agent", `👆 Перехожу на сайт ${company}...`)
+    }, 6000)
+
+    schedule(() => {
+      flashUrl()
+      setBrowser({
+        ...IDLE_BROWSER,
+        phase: "email_company_site",
+        tabs: [
+          {
+            title: `${searchQuery} — Яндекс`,
+            url: `https://yandex.ru/search/?text=${encodeURIComponent(searchQuery)}`,
+            active: false,
+          },
+          {
+            title: company,
+            url: site,
+            active: true,
+          },
+        ],
+        url: site,
+        currentPage: company,
+        emailCompanyName: company,
+        emailCompanySite: site,
+        emailCompanyDesc: companyDesc,
+        emailSearchQuery: searchQuery,
+        emailSearchResults: searchResults,
+      })
+      addChat("agent", `📄 Сайт ${company} загружен, изучаю...`)
+    }, 7000)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_contacts_page",
+      }))
+      addChat("agent", `🔍 Ищу контакты на сайте...`)
+    }, 8500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_found",
+        emailFoundEmail: emailAddr,
+        emailFoundPhone: phone,
+      }))
+      addChat("agent", `✅ Найден email: ${emailAddr}`)
+    }, 9500)
+
+    schedule(() => {
+      setAgentActivePane(1)
+      addChat("agent", `✍️ Генерирую персонализированное письмо`)
+    }, 10500)
+
+    schedule(() => {
+      setAgentActivePane(2)
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_compose",
+        emailLetterSubject: subject,
+        emailLetterBody: bodyText,
+      }))
+    }, 11000)
+
+    schedule(() => {
+      let bodyCharIdx = 0
+      const bodyTypingInterval = setInterval(() => {
+        if (!isRunningRef.current) {
+          clearInterval(bodyTypingInterval)
+          return
+        }
+        bodyCharIdx += 3
+        setBrowser((prev) => ({
+          ...prev,
+          emailTypedBody: bodyText.slice(0, bodyCharIdx),
+        }))
+        if (bodyCharIdx >= bodyText.length) clearInterval(bodyTypingInterval)
+      }, 20)
+    }, 12500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_send_click",
+      }))
+      addChat("agent", `📤 Отправляю письмо через SMTP...`)
+    }, 13500)
+
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "email_sent_confirmed",
+      }))
+      addChat("agent", `✅ Письмо отправлено и сохранено`)
+    }, 15000)
+
+    schedule(() => {
+      addChat("agent", `📝 Записываю результат в таблицу...`)
+    }, 15700)
+
+    schedule(() => {
+      setAgentActivePane(0)
+      setTableFlash(true)
+    }, 16000)
+
+    schedule(() => {
+      setEmailData((prev) =>
+        prev.map((row, i) =>
+          i === nextIdx
+            ? {
+                ...row,
+                company: contact.company,
+                site: contact.site,
+                email: contact.email,
+                phone: contact.phone,
+                letter1: contact.letter1,
+                sendStatus: "Письмо отправлено и сохранено",
+                letter2: contact.letter2,
+                letter3: contact.letter3,
+                letter4: contact.letter4,
+              }
+            : row
+        )
+      )
+      setTimeout(() => setTableFlash(false), 600)
+      setBrowser({ ...IDLE_BROWSER })
+      setAgentActivePane(0)
+      processNextRef.current()
+    }, 16500)
+  }, [addChat, flashUrl, setAgentActivePane])
+
+  const processNext = isEmail ? processNextEmail : isThreads ? processNextThreads : processNextPrice
 
   React.useEffect(() => {
-    processNextRef.current = isThreads ? processNextThreads : processNextPrice
-  }, [isThreads, processNextPrice, processNextThreads])
+    processNextRef.current = isEmail ? processNextEmail : isThreads ? processNextThreads : processNextPrice
+  }, [isEmail, isThreads, processNextPrice, processNextThreads, processNextEmail])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
@@ -986,6 +1309,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     threads_comment_publish: "Публикую...",
     threads_published: "Опубликовано!",
     threads_check: "Проверяю комментарий...",
+    email_yandex_home: "Яндекс загружен",
+    email_yandex_typing: "Ввожу запрос...",
+    email_yandex_results: "Результаты поиска",
+    email_company_click: "Перехожу на сайт...",
+    email_company_site: "Сайт компании",
+    email_contacts_page: "Ищу контакты...",
+    email_found: "Email найден!",
+    email_compose: "Пишу письмо...",
+    email_send_click: "Отправляю...",
+    email_sent_confirmed: "Отправлено!",
   }
 
   const [showCta, setShowCta] = React.useState(false)
@@ -1005,9 +1338,11 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         <h2 className="text-lg font-semibold">Обработка данных ИИ-агентом</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        {isThreads
-          ? "ИИ-агент ищет посты в Threads, генерирует нативные комментарии и публикует их."
-          : "ИИ-агент ищет цены через браузер — вводит запрос в Google, переходит на маркетплейсы и записывает результат."}
+        {isEmail
+          ? "ИИ-агент ищет компании в Яндексе, находит контакты и отправляет персонализированные письма."
+          : isThreads
+            ? "ИИ-агент ищет посты в Threads, генерирует нативные комментарии и публикует их."
+            : "ИИ-агент ищет цены через браузер — вводит запрос в Google, переходит на маркетплейсы и записывает результат."}
       </p>
 
       <div className="flex items-center gap-4">
@@ -1088,8 +1423,65 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="h-[calc(100dvh-320px)] md:h-[460px]">
-              {isThreads ? (
+             <ScrollArea className="h-[calc(100dvh-320px)] md:h-[460px]">
+               {isEmail ? (
+                 <table className="w-full text-xs">
+                   <thead className="sticky top-0 bg-card">
+                     <tr className="border-b text-left text-muted-foreground">
+                       <th className="w-6 px-1 py-1 font-medium">#</th>
+                       <th className="px-1 py-1 font-medium">A</th>
+                       <th className="hidden px-1 py-1 font-medium sm:table-cell">D</th>
+                       <th className="hidden px-1 py-1 font-medium md:table-cell">E</th>
+                       <th className="hidden px-1 py-1 font-medium lg:table-cell">F</th>
+                       <th className="w-14 px-1 py-1 font-medium">I</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {emailData.map((row) => {
+                       const isActive = row.id - 1 === currentIndex && isRunning
+                       const justUpdated = tableFlash && isActive
+                       return (
+                         <tr
+                           key={row.id}
+                           className={`cursor-pointer border-b transition-all duration-300 ${
+                             justUpdated
+                               ? "bg-emerald-500/20 shadow-sm"
+                               : isActive
+                                 ? "bg-primary/10"
+                                 : row.sendStatus === "Письмо отправлено и сохранено"
+                                   ? "bg-emerald-500/5"
+                                   : "hover:bg-muted/50"
+                           }`}
+                           onClick={() => setSelectedRow(row)}
+                         >
+                           <td className="px-1 py-1 text-muted-foreground">
+                             {row.id}
+                           </td>
+                           <td className="px-1 py-1 font-medium">{row.sphere}</td>
+                           <td className="hidden max-w-[100px] truncate px-1 py-1 text-muted-foreground sm:table-cell">
+                             {row.company || "—"}
+                           </td>
+                           <td className="hidden max-w-[100px] truncate px-1 py-1 text-blue-600 dark:text-blue-400 md:table-cell">
+                             {row.site ? (
+                               <span className="text-blue-600 dark:text-blue-400">
+                                 {row.site.replace(/^https?:\/\//, "")}
+                               </span>
+                             ) : (
+                               "—"
+                             )}
+                           </td>
+                           <td className="hidden max-w-[120px] truncate px-1 py-1 text-muted-foreground lg:table-cell">
+                             {row.email || "—"}
+                           </td>
+                           <td className="px-1 py-1">
+                             <EmailStatusBadge status={row.sendStatus} />
+                           </td>
+                         </tr>
+                       )
+                     })}
+                   </tbody>
+                 </table>
+               ) : isThreads ? (
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-b text-left text-muted-foreground">
@@ -1308,7 +1700,27 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                 )}
               </CardTitle>
               <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                {isThreads
+                {isEmail
+                  ? browser.phase === "idle"
+                    ? "ИИ-агент управляет браузером для поиска компаний и отправки писем"
+                    : browser.phase.startsWith("email_yandex")
+                      ? "ИИ-агент ищет компанию в Яндексе"
+                      : browser.phase === "email_company_click"
+                        ? "ИИ-агент переходит на сайт компании"
+                        : browser.phase === "email_company_site"
+                          ? "ИИ-агент изучает сайт компании"
+                          : browser.phase === "email_contacts_page"
+                            ? "ИИ-агент ищет контакты на сайте компании"
+                            : browser.phase === "email_found"
+                              ? "ИИ-агент нашёл email компании"
+                              : browser.phase === "email_compose"
+                                ? "ИИ-агент генерирует и пишет персонализированное письмо"
+                                : browser.phase === "email_send_click"
+                                  ? "ИИ-агент отправляет письмо через SMTP"
+                                  : browser.phase === "email_sent_confirmed"
+                                    ? "ИИ-агент подтвердил отправку письма"
+                                    : "ИИ-агент записывает результат в таблицу"
+                  : isThreads
                   ? browser.phase === "idle"
                     ? "ИИ-агент управляет браузером для комментирования в Threads"
                     : browser.phase.startsWith("threads_search")
@@ -1391,6 +1803,276 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                     <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       Обработка завершена
                     </p>
+                  </div>
+                )}
+
+                {/* EMAIL YANDEX HOME */}
+                {browser.phase === "email_yandex_home" && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <div className="text-3xl font-bold" style={{ color: "#ffcc00" }}>
+                      Яндекс
+                    </div>
+                    <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-red-500 transition-all duration-500"
+                        style={{ width: "60%" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL YANDEX TYPING */}
+                {browser.phase === "email_yandex_typing" && (
+                  <div className="flex flex-col items-center gap-5 py-6">
+                    <div className="text-2xl font-bold" style={{ color: "#ffcc00" }}>
+                      Яндекс
+                    </div>
+                    <div className="relative w-72">
+                      <div className="w-full rounded-full border-2 border-red-300 bg-background px-4 py-2 text-sm text-foreground">
+                        {browser.emailTypedQuery}
+                        <span className="animate-pulse text-red-500">|</span>
+                      </div>
+                      <div className="absolute top-2.5 right-3 flex gap-1.5">
+                        <span className="text-muted-foreground">🎤</span>
+                        <span className="text-muted-foreground">🔍</span>
+                      </div>
+                    </div>
+                    <div className="mt-1 flex gap-2">
+                      <div className="rounded border bg-muted/50 px-3 py-1 text-[10px] text-muted-foreground">
+                        Найти
+                      </div>
+                      <div className="rounded border bg-muted/50 px-3 py-1 text-[10px] text-muted-foreground">
+                        Мне повезёт!
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL YANDEX RESULTS */}
+                {browser.phase === "email_yandex_results" && (
+                  <div className="animate-in fade-in flex flex-col gap-2.5 duration-300">
+                    <div className="mb-1 text-[10px] text-muted-foreground">
+                      Нашлось {browser.emailSearchResults.length} результатов
+                    </div>
+                    {browser.emailSearchResults.map((r, i) => (
+                      <div
+                        key={i}
+                        className={`rounded-lg border p-2.5 transition-all duration-200 ${
+                          i === 0
+                            ? "cursor-pointer border-red-200 bg-red-50/50 shadow-sm hover:border-red-300 hover:shadow-md dark:bg-red-950/20"
+                            : "hover:bg-muted/50"
+                        }`}
+                        style={{ animationDelay: `${i * 80}ms` }}
+                      >
+                        <div className="mb-0.5 flex items-center gap-1">
+                          <div className="size-3 rounded-full bg-muted" />
+                          <div className="truncate font-mono text-[10px] text-green-700 dark:text-green-400">
+                            {r.url}
+                          </div>
+                        </div>
+                        <div
+                          className={`mb-0.5 text-xs font-medium ${i === 0 ? "text-red-700 dark:text-red-400" : "text-foreground"}`}
+                        >
+                          {r.title}
+                        </div>
+                        <div className="line-clamp-1 text-[10px] text-muted-foreground">
+                          {r.snippet}
+                        </div>
+                        {i === 0 && (
+                          <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-red-600 dark:text-red-400">
+                            <span className="inline-flex size-3 items-center justify-center rounded bg-red-500 text-[7px] text-white">
+                              ▸
+                            </span>
+                            ИИ-агент переходит...
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* EMAIL COMPANY CLICK */}
+                {browser.phase === "email_company_click" && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8">
+                    <div className="relative">
+                      <span className="text-xl text-red-500">⟳</span>
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Переход на {browser.emailCompanyName || "сайт компании"}...
+                    </p>
+                    <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full animate-pulse bg-red-500 transition-all"
+                        style={{ width: "40%" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL COMPANY SITE */}
+                {browser.phase === "email_company_site" && (
+                  <div className="animate-in fade-in flex flex-col gap-3 duration-300">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-8 items-center justify-center rounded bg-muted/50 text-lg">
+                        🏢
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium">
+                          {browser.emailCompanyName}
+                        </div>
+                        <div className="font-mono text-[9px] text-muted-foreground">
+                          {browser.emailCompanySite}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 text-[9px] text-muted-foreground">
+                      <span className="rounded bg-muted px-2 py-0.5">Главная</span>
+                      <span className="rounded bg-muted px-2 py-0.5">О компании</span>
+                      <span className="rounded bg-red-100 px-2 py-0.5 font-medium text-red-700 dark:bg-red-950/50 dark:text-red-400">Контакты</span>
+                      <span className="rounded bg-muted px-2 py-0.5">Услуги</span>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="mb-2 h-4 w-1/2 rounded bg-muted" />
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        {browser.emailCompanyDesc}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL CONTACTS PAGE */}
+                {browser.phase === "email_contacts_page" && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-8 items-center justify-center rounded bg-muted/50 text-lg">
+                        🏢
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium">
+                          {browser.emailCompanyName}
+                        </div>
+                        <div className="font-mono text-[9px] text-muted-foreground">
+                          {browser.emailCompanySite}/contacts
+                        </div>
+                      </div>
+                    </div>
+                    <div className="animate-pulse rounded-lg border-2 border-amber-300 bg-amber-50/30 p-3 dark:bg-amber-950/20">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-sm">🔍</span>
+                        <span className="text-[11px] font-medium">Ищу контакты на странице...</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-2/3 rounded bg-muted" />
+                        <div className="h-3 w-1/2 rounded bg-muted" />
+                        <div className="h-3 w-3/4 rounded bg-muted" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL FOUND */}
+                {browser.phase === "email_found" && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-8 items-center justify-center rounded bg-muted/50 text-lg">
+                        🏢
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium">
+                          {browser.emailCompanyName}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="animate-in zoom-in rounded-lg border-2 border-emerald-300 bg-emerald-50/50 p-3 duration-300 dark:bg-emerald-950/20">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-sm">✅</span>
+                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                          Контакты найдены
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-muted-foreground">Email:</span>
+                          <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {browser.emailFoundEmail}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-muted-foreground">Тел:</span>
+                          <span className="font-medium">
+                            {browser.emailFoundPhone}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL COMPOSE */}
+                {browser.phase === "email_compose" && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 rounded-t-lg border border-b-0 bg-blue-50 px-3 py-1.5 dark:bg-blue-950/30">
+                      <span className="text-sm">✉️</span>
+                      <span className="text-[11px] font-medium">Новое письмо</span>
+                    </div>
+                    <div className="rounded-b-lg border border-t-0 bg-background p-3">
+                      <div className="mb-2 flex items-center gap-2 border-b pb-2">
+                        <span className="text-[10px] text-muted-foreground">Кому:</span>
+                        <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                          {browser.emailFoundEmail}
+                        </span>
+                      </div>
+                      <div className="mb-2 flex items-center gap-2 border-b pb-2">
+                        <span className="text-[10px] text-muted-foreground">Тема:</span>
+                        <span className="text-[11px] font-medium">
+                          {browser.emailLetterSubject}
+                        </span>
+                      </div>
+                      <div className="min-h-[120px] text-[11px] leading-relaxed">
+                        {browser.emailTypedBody || ""}
+                        <span className="animate-pulse text-blue-500">|</span>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <div className="rounded-lg bg-blue-600 px-4 py-1.5 text-[10px] font-medium text-white">
+                          Отправить
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL SEND CLICK */}
+                {browser.phase === "email_send_click" && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-blue-500/15">
+                      <span className="text-xl text-blue-500">↑</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Отправляю письмо через SMTP...
+                    </p>
+                    <div className="h-1 w-full max-w-48 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full animate-pulse bg-blue-500 transition-all"
+                        style={{ width: "60%" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* EMAIL SENT CONFIRMED */}
+                {browser.phase === "email_sent_confirmed" && (
+                  <div className="animate-in zoom-in flex flex-col items-center gap-3 py-6 duration-300">
+                    <div className="flex size-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
+                      ✉️
+                    </div>
+                    <div className="text-center">
+                      <div className="mb-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        Письмо отправлено и сохранено
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {browser.emailFoundEmail}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -2136,7 +2818,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         </div>
       )}
 
-      {isThreads && selectedRow && (
+      {isThreads && selectedRow && "date" in selectedRow && (
         <Dialog
           open={!!selectedRow}
           onOpenChange={(open) => {
@@ -2154,11 +2836,11 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             </DialogHeader>
             <div className="flex flex-col gap-4">
               {[
-                { id: "A", label: "Дата", value: selectedRow.date },
-                { id: "B", label: "Ссылка на пост", value: selectedRow.postUrl },
-                { id: "C", label: "Текст поста", value: selectedRow.postText },
-                { id: "D", label: "Комментарий", value: selectedRow.comment },
-                { id: "E", label: "Статус", value: selectedRow.status },
+                { id: "A", label: "Дата", value: (selectedRow as ThreadsDataRow).date },
+                { id: "B", label: "Ссылка на пост", value: (selectedRow as ThreadsDataRow).postUrl },
+                { id: "C", label: "Текст поста", value: (selectedRow as ThreadsDataRow).postText },
+                { id: "D", label: "Комментарий", value: (selectedRow as ThreadsDataRow).comment },
+                { id: "E", label: "Статус", value: (selectedRow as ThreadsDataRow).status },
               ].map((col) => (
                 <div key={col.id} className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-muted-foreground">
@@ -2166,18 +2848,82 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                   </span>
                   {col.id === "B" && col.value ? (
                     <a
-                      href={col.value}
+                      href={col.value as string}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="break-all text-sm text-blue-600 underline dark:text-blue-400"
                     >
-                      {col.value}
+                      {col.value as string}
                     </a>
                   ) : col.id === "E" ? (
-                    <ThreadsStatusBadge status={col.value} />
+                    <ThreadsStatusBadge status={col.value as string} />
                   ) : (
                     <span className="whitespace-pre-wrap text-sm">
-                      {col.value || "—"}
+                      {(col.value as string) || "—"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isEmail && selectedRow && "sphere" in selectedRow && (
+        <Dialog
+          open={!!selectedRow}
+          onOpenChange={(open) => {
+            if (!open) setSelectedRow(null)
+          }}
+        >
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Строка {selectedRow.id}
+              </DialogTitle>
+              <DialogDescription>
+                Данные выбранной строки таблицы
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              {[
+                { id: "A", label: "Сфера", value: (selectedRow as EmailDataRow).sphere },
+                { id: "B", label: "Имя отправителя", value: (selectedRow as EmailDataRow).senderName },
+                { id: "C", label: "Кейс", value: (selectedRow as EmailDataRow).caseUsed },
+                { id: "D", label: "Компания", value: (selectedRow as EmailDataRow).company },
+                { id: "E", label: "Сайт", value: (selectedRow as EmailDataRow).site },
+                { id: "F", label: "Почта", value: (selectedRow as EmailDataRow).email },
+                { id: "G", label: "Телефон", value: (selectedRow as EmailDataRow).phone },
+                { id: "H", label: "Письмо 1", value: (selectedRow as EmailDataRow).letter1 },
+                { id: "I", label: "Статус", value: (selectedRow as EmailDataRow).sendStatus },
+                { id: "J", label: "Письмо 2", value: (selectedRow as EmailDataRow).letter2 },
+                { id: "K", label: "Письмо 3", value: (selectedRow as EmailDataRow).letter3 },
+                { id: "L", label: "Письмо 4", value: (selectedRow as EmailDataRow).letter4 },
+              ].map((col) => (
+                <div key={col.id} className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {col.id} — {col.label}
+                  </span>
+                  {col.id === "E" && col.value ? (
+                    <a
+                      href={col.value as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-sm text-blue-600 underline dark:text-blue-400"
+                    >
+                      {col.value as string}
+                    </a>
+                  ) : col.id === "I" ? (
+                    <EmailStatusBadge status={col.value as string} />
+                  ) : (col.id === "H" || col.id === "J" || col.id === "K" || col.id === "L") ? (
+                    <ScrollArea className="max-h-[150px] rounded border p-2">
+                      <span className="whitespace-pre-wrap text-sm">
+                        {(col.value as string) || "—"}
+                      </span>
+                    </ScrollArea>
+                  ) : (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {(col.value as string) || "—"}
                     </span>
                   )}
                 </div>
@@ -2222,6 +2968,24 @@ function ThreadsStatusBadge({ status }: { status: string }) {
     >
       {status === "обработка" && <span className="mr-1 animate-spin">⟳</span>}
       {status === "Готово" && <span className="mr-1">✓</span>}
+      {status}
+    </span>
+  )
+}
+
+function EmailStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
+    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    "Письмо отправлено и сохранено": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-200 ${styles[status] || styles["ожидает"]}`}
+    >
+      {status === "обработка" && <span className="mr-1 animate-spin">⟳</span>}
+      {status === "Письмо отправлено и сохранено" && <span className="mr-1">✓</span>}
       {status}
     </span>
   )
