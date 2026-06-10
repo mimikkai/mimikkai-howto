@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { StepChat } from "@/components/step-chat"
 import { StepMimLua } from "@/components/step-mim-lua"
 import { StepDataTable } from "@/components/step-data-table"
 import { StepProcessing } from "@/components/step-processing"
-import { Button } from "@/components/ui/button"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -23,8 +23,31 @@ const STEP_ICONS: Record<Step, string> = {
   4: "🤖",
 }
 
+const STEP_SLUGS: Record<Step, string> = {
+  1: "chat",
+  2: "mim-lua",
+  3: "data",
+  4: "processing",
+}
+
+const SLUG_TO_STEP: Record<string, Step> = {
+  chat: 1,
+  "mim-lua": 2,
+  data: 3,
+  processing: 4,
+}
+
 export default function Page() {
-  const [step, setStep] = React.useState<Step>(1)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const slug = searchParams.get("step")
+  const step: Step = (SLUG_TO_STEP[slug ?? ""] as Step) || 1
+
+  const goToStep = React.useCallback((s: Step) => {
+    router.push(`${pathname}?step=${STEP_SLUGS[s]}`)
+  }, [router, pathname])
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -54,7 +77,7 @@ export default function Page() {
                   <div className={`mx-1 h-px w-6 ${s <= step ? "bg-primary" : "bg-border"}`} />
                 )}
                 <button
-                  onClick={() => s < step ? setStep(s) : undefined}
+                  onClick={() => s <= step ? goToStep(s) : undefined}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     s === step
                       ? "bg-primary text-primary-foreground"
@@ -75,22 +98,22 @@ export default function Page() {
       </nav>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
-        {step === 1 && <StepChat onComplete={() => setStep(2)} />}
+        {step === 1 && <StepChat onComplete={() => goToStep(2)} />}
         {step === 2 && (
           <StepMimLua
-            onNext={() => setStep(3)}
-            onBack={() => setStep(1)}
+            onNext={() => goToStep(3)}
+            onBack={() => goToStep(1)}
           />
         )}
         {step === 3 && (
           <StepDataTable
-            onNext={() => setStep(4)}
-            onBack={() => setStep(2)}
+            onNext={() => goToStep(4)}
+            onBack={() => goToStep(2)}
           />
         )}
         {step === 4 && (
           <StepProcessing
-            onBack={() => setStep(3)}
+            onBack={() => goToStep(3)}
             onComplete={() => {
               alert("🎉 Гайд завершён! Теперь вы знаете, как работает платформа MimikkAi.")
             }}

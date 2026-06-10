@@ -19,14 +19,24 @@ interface DataRow {
   status: "ожидает" | "обработка" | "найдено" | "не найдено"
 }
 
-type BrowserPhase = "idle" | "google" | "site1" | "site2" | "found"
+type BrowserPhase = "idle" | "google_loading" | "google_results" | "click_result" | "market_loading" | "market_page" | "market_scrolling" | "price_found" | "done_item"
+
+interface BrowserTab {
+  title: string
+  url: string
+  active: boolean
+}
 
 interface BrowserState {
   phase: BrowserPhase
+  tabs: BrowserTab[]
   url: string
   query: string
-  siteResults: { title: string; price: string; site: string }[]
-  loading: boolean
+  currentPage: string
+  searchResults: { title: string; url: string; snippet: string }[]
+  marketItems: { name: string; price: string; rating: string }[]
+  foundPrice: string
+  loadingProgress: number
 }
 
 const PRODUCTS = [
@@ -169,11 +179,11 @@ const PRICE_RANGES: Record<string, [number, number]> = {
 }
 
 const MARKETPLACES = [
-  { name: "Ozon", domain: "ozon.ru" },
-  { name: "Wildberries", domain: "wildberries.ru" },
-  { name: "Яндекс Маркет", domain: "market.yandex.ru" },
-  { name: "DNS", domain: "dns-shop.ru" },
-  { name: "Ситилинк", domain: "citilink.ru" },
+  { name: "Ozon", domain: "ozon.ru", color: "#005bff" },
+  { name: "Wildberries", domain: "wildberries.ru", color: "#cb11ab" },
+  { name: "Яндекс Маркет", domain: "market.yandex.ru", color: "#ffcc00" },
+  { name: "DNS", domain: "dns-shop.ru", color: "#ff6600" },
+  { name: "Ситилинк", domain: "citilink.ru", color: "#e30611" },
 ]
 
 function generatePrice(product: string): string {
@@ -192,6 +202,39 @@ function pickMarkets() {
   return shuffled.slice(0, 3)
 }
 
+function generateSearchResults(product: string, price: string) {
+  const markets = pickMarkets()
+  return [
+    { title: `${product} — купить на ${markets[0].name}`, url: `https://${markets[0].domain}/catalog/${encodeURIComponent(product.toLowerCase())}`, snippet: `${product} по цене от ${price}. Доставка по всей России. Гарантия.` },
+    { title: `${product} — ${markets[1].name}`, url: `https://${markets[1].domain}/product/${encodeURIComponent(product.toLowerCase())}`, snippet: `Купить ${product} с быстрой доставкой. ${price}. Отзывы покупателей.` },
+    { title: `${product} цена — ${markets[2].name}`, url: `https://${markets[2].domain}/search?q=${encodeURIComponent(product)}`, snippet: `${product} в наличии. Цена: ${price}. Сравните цены на ${markets[2].name}.` },
+    { title: `${product} отзывы и цены`, url: `https://review-site.ru/${encodeURIComponent(product.toLowerCase())}`, snippet: `Обзоры и сравнение цен на ${product}. Рейтинг 4.7 из 5.` },
+  ]
+}
+
+function generateMarketItems(product: string, price: string) {
+  const num = parseInt(price.replace(/\D/g, ""))
+  const discounted = Math.round((num * 0.92) / 100) * 100
+  const bundled = Math.round((num * 1.15) / 100) * 100
+  return [
+    { name: product, price, rating: (4 + Math.random()).toFixed(1) },
+    { name: `${product} (скидка)`, price: `${discounted.toLocaleString("ru-RU")} ₽`, rating: (4.2 + Math.random() * 0.7).toFixed(1) },
+    { name: `${product} комплект`, price: `${bundled.toLocaleString("ru-RU")} ₽`, rating: (4.3 + Math.random() * 0.6).toFixed(1) },
+  ]
+}
+
+const IDLE_BROWSER: BrowserState = {
+  phase: "idle",
+  tabs: [{ title: "Новая вкладка", url: "about:blank", active: true }],
+  url: "about:blank",
+  query: "",
+  currentPage: "",
+  searchResults: [],
+  marketItems: [],
+  foundPrice: "",
+  loadingProgress: 0,
+}
+
 export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [data, setData] = React.useState<DataRow[]>(() =>
     PRODUCTS.map((product, i) => ({
@@ -201,13 +244,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       status: "ожидает" as const,
     }))
   )
-  const [browser, setBrowser] = React.useState<BrowserState>({
-    phase: "idle",
-    url: "",
-    query: "",
-    siteResults: [],
-    loading: false,
-  })
+  const [browser, setBrowser] = React.useState<BrowserState>(IDLE_BROWSER)
   const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [isRunning, setIsRunning] = React.useState(false)
   const [isDone, setIsDone] = React.useState(false)
@@ -215,10 +252,8 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
 
   const dataRef = React.useRef(data)
   dataRef.current = data
-
   const currentIndexRef = React.useRef(currentIndex)
   currentIndexRef.current = currentIndex
-
   const isRunningRef = React.useRef(isRunning)
   isRunningRef.current = isRunning
 
@@ -236,80 +271,154 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
     if (nextIdx >= dataRef.current.length) {
       setIsRunning(false)
       setIsDone(true)
-      addLog("✅ Все строки обработаны. Агент завершил работу.")
+      addLog("✅ Все строки обработаны.")
+      setBrowser({ ...IDLE_BROWSER, phase: "idle" })
       return
     }
 
     setCurrentIndex(nextIdx)
     const product = dataRef.current[nextIdx].product
     const price = generatePrice(product)
-    const markets = pickMarkets()
     const found = Math.random() > 0.05
+    const markets = pickMarkets()
 
     setData((prev) =>
-      prev.map((row, i) =>
-        i === nextIdx ? { ...row, status: "обработка" as const } : row
-      )
+      prev.map((row, i) => (i === nextIdx ? { ...row, status: "обработка" as const } : row))
     )
 
-    setBrowser({
-      phase: "google",
-      url: `https://www.google.com/search?q=${encodeURIComponent(product + " цена купить")}`,
-      query: product,
-      siteResults: [],
-      loading: true,
-    })
-    addLog(`🔍 [${nextIdx + 1}/${dataRef.current.length}] ${product}`)
+    const searchResults = found ? generateSearchResults(product, price) : []
+    const marketItems = found ? generateMarketItems(product, price) : []
 
-    setTimeout(() => {
-      if (!isRunningRef.current) return
+    const schedule = (fn: () => void, ms: number) => setTimeout(() => {
+      if (isRunningRef.current) fn()
+    }, ms)
+
+    // Phase 1: Google loading
+    schedule(() => {
       setBrowser({
-        phase: "site1",
-        url: `https://${markets[0].domain}/search?q=${encodeURIComponent(product)}`,
-        query: product,
-        siteResults: [],
-        loading: true,
+        phase: "google_loading",
+        tabs: [{ title: "Google", url: `https://www.google.com/search?q=${encodeURIComponent(product + " цена")}`, active: true }],
+        url: `https://www.google.com/search?q=${encodeURIComponent(product + " цена")}`,
+        query: product + " цена",
+        currentPage: "google",
+        searchResults: [],
+        marketItems: [],
+        foundPrice: "",
+        loadingProgress: 30,
       })
-      addLog(`  ↳ Открываю ${markets[0].name}...`)
-    }, 700)
+      addLog(`🔍 [${nextIdx + 1}/${dataRef.current.length}] Google: "${product} цена"`)
+    }, 100)
 
-    setTimeout(() => {
-      if (!isRunningRef.current) return
+    // Phase 2: Google results
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "google_results",
+        loadingProgress: 100,
+        searchResults: found ? searchResults : searchResults.slice(0, 1),
+      }))
+      if (found) addLog(`  ↳ Найдено ${searchResults.length} результатов`)
+    }, 800)
+
+    // Phase 3: Click first result → navigating
+    schedule(() => {
+      if (!found) return
       setBrowser({
-        phase: "site2",
-        url: `https://${markets[1].domain}/catalog?q=${encodeURIComponent(product)}`,
+        phase: "click_result",
+        tabs: [
+          { title: "Google", url: `https://www.google.com/search?q=${encodeURIComponent(product)}`, active: false },
+          { title: markets[0].name, url: `https://${markets[0].domain}/product/${encodeURIComponent(product.toLowerCase())}`, active: true },
+        ],
+        url: `https://${markets[0].domain}/product/${encodeURIComponent(product.toLowerCase())}`,
         query: product,
-        siteResults: found
-          ? [{ title: `${product} — ${price}`, price, site: markets[0].name }]
-          : [],
-        loading: true,
+        currentPage: markets[0].name,
+        searchResults: found ? searchResults : [],
+        marketItems: [],
+        foundPrice: "",
+        loadingProgress: 20,
+      })
+      addLog(`  ↳ Перехожу на ${markets[0].name}...`)
+    }, 1800)
+
+    // Phase 4: Market loading
+    schedule(() => {
+      if (!found) return
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "market_loading",
+        loadingProgress: 60,
+      }))
+    }, 2200)
+
+    // Phase 5: Market page with products
+    schedule(() => {
+      if (!found) return
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "market_page",
+        marketItems,
+        loadingProgress: 100,
+      }))
+      addLog(`  ↳ Страница загружена, ищу цену...`)
+    }, 2800)
+
+    // Phase 6: Scrolling to price
+    schedule(() => {
+      if (!found) return
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "market_scrolling",
+      }))
+      addLog(`  ↳ Нахожу актуальную цену...`)
+    }, 3400)
+
+    // Phase 7: Open second market tab
+    schedule(() => {
+      if (!found) return
+      setBrowser({
+        phase: "market_loading",
+        tabs: [
+          { title: "Google", url: `https://www.google.com/search?q=${encodeURIComponent(product)}`, active: false },
+          { title: markets[0].name, url: `https://${markets[0].domain}/product/${encodeURIComponent(product.toLowerCase())}`, active: false },
+          { title: markets[1].name, url: `https://${markets[1].domain}/catalog/${encodeURIComponent(product.toLowerCase())}`, active: true },
+        ],
+        url: `https://${markets[1].domain}/catalog/${encodeURIComponent(product.toLowerCase())}`,
+        query: product,
+        currentPage: markets[1].name,
+        searchResults: found ? searchResults : [],
+        marketItems: found ? generateMarketItems(product, price) : [],
+        foundPrice: "",
+        loadingProgress: 40,
       })
       addLog(`  ↳ Проверяю ${markets[1].name}...`)
-    }, 1400)
+    }, 4000)
 
-    setTimeout(() => {
-      if (!isRunningRef.current) return
-      setBrowser({
-        phase: "found",
-        url: `https://${markets[2].domain}/product?q=${encodeURIComponent(product)}`,
-        query: product,
-        siteResults: found
-          ? [
-              { title: `${product} — ${price}`, price, site: markets[0].name },
-              { title: `${product} — от ${price}`, price, site: markets[1].name },
-            ]
-          : [],
-        loading: false,
-      })
+    // Phase 8: Second market loaded
+    schedule(() => {
+      if (!found) return
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "market_page",
+        loadingProgress: 100,
+      }))
+    }, 4600)
+
+    // Phase 9: Price confirmed
+    schedule(() => {
+      setBrowser((prev) => ({
+        ...prev,
+        phase: "price_found",
+        foundPrice: found ? price : "",
+      }))
       if (found) {
-        addLog(`  ✅ Найдено: ${price} (${markets[0].name})`)
+        addLog(`  ✅ Цена: ${price}`)
       } else {
         addLog(`  ❌ Цена не найдена`)
       }
-    }, 2000)
+    }, 5200)
 
-    setTimeout(() => {
-      if (!isRunningRef.current) return
+    // Phase 10: Write to table, move next
+    schedule(() => {
       setData((prev) =>
         prev.map((row, i) =>
           i === nextIdx
@@ -317,23 +426,26 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
             : row
         )
       )
-      setBrowser({ phase: "idle", url: "", query: "", siteResults: [], loading: false })
+      setBrowser({ ...IDLE_BROWSER })
       processNext()
-    }, 2600)
+    }, 5800)
   }, [addLog])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
     isRunningRef.current = true
-    addLog("🚀 Агент запущен. Начинаю обработку таблицы...")
+    addLog("🚀 Агент запущен.")
     setTimeout(processNext, 300)
   }, [addLog, processNext])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
     isRunningRef.current = false
-    addLog("⏸ Агент приостановлен.")
+    addLog("⏸ Пауза.")
   }, [addLog])
+
+  const activeTab = browser.tabs.find((t) => t.active)
+  const activeMarket = MARKETPLACES.find((m) => m.name === browser.currentPage)
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -342,7 +454,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         <h2 className="text-lg font-semibold">Обработка данных ИИ-агентом</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        ИИ-агент берёт товары из таблицы, ищет цены через браузер и заполняет результат.
+        ИИ-агент ищет цены через браузер — переходит из Google на маркетплейсы и записывает результат в таблицу.
       </p>
 
       <div className="flex items-center gap-4">
@@ -373,7 +485,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[460px]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b text-left text-muted-foreground">
@@ -416,83 +528,222 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
 
         <div className="flex min-h-0 flex-col gap-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
                 Chrome + MCP Playwright
                 {browser.phase !== "idle" && (
-                  <span className="animate-pulse text-[10px] text-blue-500">● активно</span>
+                  <span className="animate-pulse text-[10px] text-blue-500">●</span>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-lg border">
-                <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-1.5">
-                  <div className="flex gap-1.5">
-                    <div className="size-2.5 rounded-full bg-red-400" />
-                    <div className="size-2.5 rounded-full bg-yellow-400" />
-                    <div className="size-2.5 rounded-full bg-green-400" />
+              <div className="overflow-hidden rounded-lg border shadow-sm">
+                {/* Tab bar */}
+                <div className="flex items-center gap-0 border-b bg-muted/30 overflow-x-auto">
+                  {browser.tabs.map((tab, i) => (
+                    <div
+                      key={i}
+                      className={`flex shrink-0 items-center gap-1.5 border-r px-3 py-1.5 text-[10px] transition-colors ${
+                        tab.active
+                          ? "bg-background font-medium text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {tab.active && <span className="size-1.5 rounded-full bg-blue-500" />}
+                      <span className="truncate max-w-[80px]">{tab.title}</span>
+                      <span className="text-muted-foreground/50 hover:text-muted-foreground">×</span>
+                    </div>
+                  ))}
+                  <button className="px-2 py-1.5 text-muted-foreground hover:text-foreground">+</button>
+                </div>
+
+                {/* Address bar */}
+                <div className="flex items-center gap-2 border-b bg-muted/20 px-2 py-1">
+                  <div className="flex gap-1">
+                    <button className="rounded p-0.5 text-muted-foreground hover:bg-muted"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg></button>
                   </div>
-                  <div className="flex-1 overflow-hidden rounded bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground truncate">
+                  <div className="flex-1 overflow-hidden rounded bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground truncate border">
                     {browser.url || "about:blank"}
                   </div>
                 </div>
-                <div className="min-h-[160px] bg-background p-3">
+
+                {/* Page content */}
+                <div className="min-h-[200px] bg-background p-3 transition-all">
+
+                  {/* IDLE */}
                   {browser.phase === "idle" && !isDone && (
-                    <p className="text-xs text-muted-foreground">Браузер ожидает запуска агента...</p>
+                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                      <div className="text-3xl">🌐</div>
+                      <p className="text-xs text-muted-foreground">Браузер ожидает запуска</p>
+                    </div>
                   )}
                   {browser.phase === "idle" && isDone && (
-                    <div className="flex flex-col items-center justify-center gap-2 py-4">
-                      <span className="text-2xl">✅</span>
+                    <div className="flex flex-col items-center justify-center gap-2 py-8">
+                      <span className="text-3xl">✅</span>
                       <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Обработка завершена</p>
                     </div>
                   )}
-                  {browser.phase === "google" && (
-                    <div className="flex flex-col gap-2">
-                      <div className="text-xs font-medium text-muted-foreground">Google Search</div>
-                      <div className="rounded border bg-muted/50 px-2 py-1 font-mono text-[11px]">{browser.query} цена купить</div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="animate-spin text-blue-500">⟳</span>
-                        Поиск в Google...
+
+                  {/* GOOGLE LOADING */}
+                  {browser.phase === "google_loading" && (
+                    <div className="flex flex-col items-center gap-4 py-4">
+                      <div className="text-2xl font-bold">
+                        <span style={{ color: "#4285f4" }}>G</span><span style={{ color: "#ea4335" }}>o</span><span style={{ color: "#fbbc05" }}>o</span><span style={{ color: "#4285f4" }}>g</span><span style={{ color: "#34a853" }}>l</span><span style={{ color: "#ea4335" }}>e</span>
+                      </div>
+                      <div className="w-64 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                        {browser.query}
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="h-1 w-6 animate-pulse rounded bg-blue-500" />
+                        <div className="h-1 w-4 animate-pulse rounded bg-blue-500" style={{ animationDelay: "0.1s" }} />
+                        <div className="h-1 w-2 animate-pulse rounded bg-blue-500" style={{ animationDelay: "0.2s" }} />
                       </div>
                     </div>
                   )}
-                  {(browser.phase === "site1" || browser.phase === "site2") && browser.siteResults.length === 0 && (
-                    <div className="flex flex-col gap-2">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {browser.phase === "site1" ? "Маркетплейс" : "Сравнение цен"}
+
+                  {/* GOOGLE RESULTS */}
+                  {browser.phase === "google_results" && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold">
+                          <span style={{ color: "#4285f4" }}>G</span><span style={{ color: "#ea4335" }}>o</span><span style={{ color: "#fbbc05" }}>o</span><span style={{ color: "#4285f4" }}>g</span><span style={{ color: "#34a853" }}>l</span><span style={{ color: "#ea4335" }}>e</span>
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">— результаты поиска</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="animate-spin text-blue-500">⟳</span>
-                        Загрузка страницы...
+                      <div className="font-mono text-[10px] text-muted-foreground mb-2">
+                        Около 1 240 000 результатов (0,42 сек.)
                       </div>
-                      <div className="mt-1 space-y-1">
-                        <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
-                        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-                        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+                      {browser.searchResults.map((r, i) => (
+                        <div key={i} className={`rounded-lg border p-2 transition-colors ${i === 0 ? "border-blue-300 bg-blue-50/50 dark:bg-blue-950/20 cursor-pointer" : "hover:bg-muted/50"}`}>
+                          <div className="text-[10px] text-green-700 dark:text-green-400 font-mono truncate">{r.url}</div>
+                          <div className={`text-xs font-medium ${i === 0 ? "text-blue-700 dark:text-blue-400" : "text-foreground"}`}>{r.title}</div>
+                          <div className="text-[10px] text-muted-foreground line-clamp-1">{r.snippet}</div>
+                          {i === 0 && (
+                            <div className="mt-1 flex items-center gap-1 text-[9px] text-blue-600 dark:text-blue-400">
+                              <span>▸</span> нажмите чтобы перейти
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CLICK RESULT / NAVIGATING */}
+                  {browser.phase === "click_result" && (
+                    <div className="flex flex-col items-center justify-center gap-3 py-6">
+                      <span className="animate-spin text-blue-500 text-lg">⟳</span>
+                      <p className="text-xs text-muted-foreground">Переход на {browser.currentPage}...</p>
+                      <div className="w-full rounded-full bg-muted h-1 overflow-hidden">
+                        <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${browser.loadingProgress}%` }} />
                       </div>
                     </div>
                   )}
-                  {(browser.phase === "site2" || browser.phase === "found") && browser.siteResults.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <div className="text-xs font-medium text-muted-foreground">Найденные результаты:</div>
-                      {browser.siteResults.map((r, i) => (
-                        <div key={i} className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 px-2.5 py-1.5">
-                          <span className="text-sm">💰</span>
+
+                  {/* MARKET LOADING */}
+                  {browser.phase === "market_loading" && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        {activeMarket && (
+                          <span className="inline-flex size-4 items-center justify-center rounded text-[8px] font-bold text-white" style={{ backgroundColor: activeMarket.color }}>
+                            {activeMarket.name[0]}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium">{browser.currentPage}</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
+                        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+                        <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+                        <div className="h-20 w-full animate-pulse rounded bg-muted" />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="animate-spin text-blue-500">⟳</span>
+                        Загрузка страницы {browser.loadingProgress}%
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MARKET PAGE */}
+                  {browser.phase === "market_page" && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        {activeMarket && (
+                          <span className="inline-flex size-4 items-center justify-center rounded text-[8px] font-bold text-white" style={{ backgroundColor: activeMarket.color }}>
+                            {activeMarket.name[0]}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium">{browser.currentPage}</span>
+                        <span className="text-[10px] text-muted-foreground">— результаты по запросу</span>
+                      </div>
+                      <div className="text-xs font-medium text-foreground mb-1">«{browser.query}»</div>
+                      {browser.marketItems.map((item, i) => (
+                        <div key={i} className={`flex items-center gap-3 rounded-lg border p-2 transition-colors ${i === 0 ? "border-amber-300 bg-amber-50/50 dark:bg-amber-950/20" : ""}`}>
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-lg">📦</div>
                           <div className="flex-1 min-w-0">
-                            <div className="truncate text-[11px] font-medium text-foreground">{r.title}</div>
-                            <div className="text-[10px] text-muted-foreground">{r.site}</div>
+                            <div className="text-[11px] font-medium truncate">{item.name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400">★ {item.rating}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-xs font-bold ${i === 0 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>{item.price}</div>
+                            {i === 0 && <div className="text-[9px] text-emerald-600 dark:text-emerald-400">лучшая цена</div>}
                           </div>
                         </div>
                       ))}
-                      {browser.loading && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="animate-spin text-blue-500">⟳</span>
-                          Проверяю следующий магазин...
-                        </div>
-                      )}
                     </div>
                   )}
+
+                  {/* MARKET SCROLLING */}
+                  {browser.phase === "market_scrolling" && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        {activeMarket && (
+                          <span className="inline-flex size-4 items-center justify-center rounded text-[8px] font-bold text-white" style={{ backgroundColor: activeMarket.color }}>
+                            {activeMarket.name[0]}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium">{browser.currentPage}</span>
+                      </div>
+                      {browser.marketItems.map((item, i) => (
+                        <div key={i} className={`flex items-center gap-3 rounded-lg border p-2 ${i === 0 ? "border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 ring-2 ring-amber-400/30" : ""}`}>
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-lg">📦</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-medium truncate">{item.name}</div>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400">★ {item.rating}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-xs font-bold ${i === 0 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>{item.price}</div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="animate-spin text-amber-500">⟳</span>
+                        Скроллю к цене...
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PRICE FOUND */}
+                  {browser.phase === "price_found" && (
+                    <div className="flex flex-col items-center gap-3 py-4">
+                      <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">💰</div>
+                      <div className="text-center">
+                        <div className="text-xs text-muted-foreground mb-1">Цена найдена:</div>
+                        <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{browser.foundPrice}</div>
+                      </div>
+                      <div className="rounded-lg border bg-emerald-500/5 px-3 py-1.5 text-[10px] text-emerald-700 dark:text-emerald-400">
+                        ✓ Записываю в таблицу...
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status bar */}
+                <div className="flex items-center justify-between border-t bg-muted/20 px-2 py-0.5 text-[9px] text-muted-foreground">
+                  <span>MCP Playwright active</span>
+                  <span>{browser.phase !== "idle" ? "●" : "○"}</span>
                 </div>
               </div>
             </CardContent>
@@ -503,10 +754,10 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
               <CardTitle className="text-xs">Лог агента</CardTitle>
             </CardHeader>
             <CardContent className="min-h-0 pb-0">
-              <ScrollArea className="h-[120px]">
+              <ScrollArea className="h-[80px]">
                 <div className="flex flex-col gap-0.5 font-mono text-[10px]">
                   {logs.length === 0 && (
-                    <p className="text-muted-foreground">Нажмите «Запуск» для начала обработки</p>
+                    <p className="text-muted-foreground">Нажмите «Запуск» для начала</p>
                   )}
                   {logs.map((log, i) => (
                     <div key={i} className="text-muted-foreground">{log}</div>
