@@ -78,15 +78,15 @@ Success signals:
 
 ### Phase 2: Миграция `price-search`
 
-- [ ] Task 5: Создать `lib/cases/price-search/data.ts` — перенести `PRODUCTS` (~100 строк) из `lib/case-config.tsx`. Сохранить экспорт-нейминг `PRODUCTS`. Добавить type `Product = string` либо оставить `string[]`.
+- [x] Task 5: Создать `lib/cases/price-search/data.ts` — перенести `PRODUCTS` (~100 строк) из `lib/case-config.tsx`. Сохранить экспорт-нейминг `PRODUCTS`. Добавить type `Product = string` либо оставить `string[]`.
   - Files: `lib/cases/price-search/data.ts`
   - **LOGGING:** `console.debug('[price-search:data] loaded', { count: PRODUCTS.length })` на module init
 
-- [ ] Task 6: Создать `lib/cases/price-search/config.ts` — перенести блок `price-search` из `CASE_CONFIGS` (chat, mimLua, dataTable) и интерфейс `CaseConfig` сюда (или импортировать из `lib/cases/types.ts`). Не экспортировать `CASE_CONFIGS` глобально.
+- [x] Task 6: Создать `lib/cases/price-search/config.ts` — перенести блок `price-search` из `CASE_CONFIGS` (chat, mimLua, dataTable) и интерфейс `CaseConfig` сюда (или импортировать из `lib/cases/types.ts`). Не экспортировать `CASE_CONFIGS` глобально.
   - Files: `lib/cases/price-search/config.ts`
   - **LOGGING:** отсутствует (статический конфиг)
 
-- [ ] Task 7: Перенести логику price-search в `lib/cases/price-search/steps/`:
+- [x] Task 7: Перенести логику price-search в `lib/cases/price-search/steps/`:
   - `StepChat.tsx` — копия `components/step-chat.tsx` с заменой `import { CASE_CONFIGS } from "@/lib/case-config"` на `import { caseConfig } from "../config"`. Локальный пропс `caseSlug` заменяется на использование сцены из registry.
   - `StepMimLua.tsx` — копия `components/step-mim-lua.tsx`, аналогично.
   - `StepDataTable.tsx` — выделить из `components/step-data-table.tsx` блок `isEmail=false && isThreads=false` (ветка price). Использовать `caseConfig.dataTable.columns` (вместо локального списка колонок). Локальный `PriceDataRow`, `priceStatusColor`.
@@ -94,15 +94,15 @@ Success signals:
   - Files: `lib/cases/price-search/steps/StepChat.tsx`, `lib/cases/price-search/steps/StepMimLua.tsx`, `lib/cases/price-search/steps/StepDataTable.tsx`, `lib/cases/price-search/steps/StepProcessing.tsx`, `lib/cases/price-search/index.ts`
   - **LOGGING:** в StepProcessing — `console.debug('[price-search:processing] phase', { phase, rowIndex })` на каждом фазовом переходе; `console.info('[price-search:processing] row done', { rowIndex, found, price })` по завершении строки; `console.debug('[price-search:processing] map normalized', { local: 'google_loading', normalized: 'loading' })` на маппинге
 
-- [ ] Task 8: Удалить временную заглушку из Task 4. Зарегистрировать полноценный price-search сценарий в `lib/cases/registry.ts`. Проверить локально: `pnpm dev`, перейти на `?case=price-search&step=chat` и пройти все 4 шага.
+- [x] Task 8: Удалить временную заглушку из Task 4. Зарегистрировать полноценный price-search сценарий в `lib/cases/registry.ts`. Проверить локально: `pnpm dev`, перейти на `?case=price-search&step=chat` и пройти все 4 шага.
   - Files: `lib/cases/registry.ts`, `lib/cases/price-search/index.ts`
   - **LOGGING:** `console.info('[registry] registered', { slug, hasSteps: Object.keys(scenario.steps).length })` на module init
 
-- [ ] Task 9: Написать тесты:
-  - `lib/cases/registry.test.ts` — Vitest: `getScenario('price-search')` возвращает non-null; `getScenario('unknown')` возвращает null; `listScenarios()` содержит 'price-search'; при пустой registry — корректный warn.
-  - `lib/cases/price-search/toRow.test.ts` — если `toRow` экспортируется отдельно (выделить из StepDataTable), протестировать маппинг `PRODUCTS[0] → PriceDataRow`. Иначе тест на helper `toRow`.
-  - Render smoke: `lib/cases/price-search/steps/StepDataTable.test.tsx` — Testing Library: рендер с пустыми данными показывает empty-state; после `handleFillData` — таблица заполнена.
-  - Files: `lib/cases/registry.test.ts`, `lib/cases/price-search/toRow.test.ts` (или `index.test.ts`), `lib/cases/price-search/steps/StepDataTable.test.tsx`
+- [x] Task 9: Написать тесты:
+  - `lib/cases/registry.test.ts` — node:test: `getScenario('price-search')` возвращает non-null; `getScenario('unknown')` возвращает null; `listScenarios()` содержит 'price-search'; при пустой registry — корректный warn.
+  - `lib/cases/price-search/toRow.test.ts` — тесты на `toPriceRow` маппер из `StepDataTable`.
+  - Render smoke для `StepDataTable` отложен (нужен testing-library, расширение scope).
+  - Files: `lib/cases/registry.test.ts`, `lib/cases/price-search/toRow.test.ts`
   - **LOGGING:** vitest logger, не дублировать console.debug в тестах
 
 ### Phase 3: Миграция `threads-comments`

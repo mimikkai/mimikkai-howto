@@ -1,51 +1,35 @@
-import type { ScenarioDefinition } from "../types"
+import type { BaseRow, ScenarioDefinition } from "../types"
 import { registerScenario } from "../registry"
+import { priceSearchConfig } from "./config"
+import { PRODUCTS } from "./data"
+import { StepChat } from "./steps/StepChat"
+import { StepMimLua } from "./steps/StepMimLua"
+import { StepDataTable, toPriceRow } from "./steps/StepDataTable"
+import { StepProcessing } from "./steps/StepProcessing"
 
-export const priceSearchStub: ScenarioDefinition<string> = {
+export interface PriceDataRow extends BaseRow {
+  product: string
+  price: string
+  status: "ожидает" | "обработка" | "найдено" | "не найдено"
+}
+
+export const priceSearchScenario: ScenarioDefinition<string, PriceDataRow> = {
   meta: {
     slug: "price-search",
     title: "Поиск цен",
-    description: "Заглушка сценария price-search",
+    description: "Агент находит цены товаров, переходя на сайты магазинов",
     icon: "🛍️",
-    available: false,
+    available: true,
   },
-  config: {
-    slug: "price-search",
-    chat: {
-      greeting: "",
-      presetPrompt: "",
-      presetPromptDesc: "",
-      assistantResponse: "",
-    },
-    mimLua: {
-      inputColumns: [],
-      outputColumns: [],
-      promptSteps: [],
-      agentTitle: "",
-      agentDesc: "",
-      promptIntro: "",
-    },
-    dataTable: {
-      columns: [],
-      description: "",
-      fillButtonText: "",
-      emptyIcon: "",
-      emptyTitle: "",
-      emptyDesc: "",
-    },
-  },
-  data: [],
-  toRow: (item: string, index: number) => ({
-    id: index + 1,
-    status: "ожидает",
-    product: item,
-  }),
+  config: priceSearchConfig,
+  data: PRODUCTS,
+  toRow: toPriceRow,
   steps: {
-    StepChat: () => null,
-    StepMimLua: () => null,
-    StepDataTable: () => null,
-    StepProcessing: () => null,
+    StepChat,
+    StepMimLua,
+    StepDataTable,
+    StepProcessing,
   },
 }
 
-registerScenario("price-search", priceSearchStub as ScenarioDefinition<unknown>)
+registerScenario("price-search", priceSearchScenario as ScenarioDefinition<unknown>)
