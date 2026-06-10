@@ -19,11 +19,14 @@ interface DataRow {
   status: "ожидает" | "обработка" | "найдено" | "не найдено"
 }
 
+type BrowserPhase = "idle" | "google" | "site1" | "site2" | "found"
+
 interface BrowserState {
+  phase: BrowserPhase
   url: string
   query: string
-  results: string[]
-  active: boolean
+  siteResults: { title: string; price: string; site: string }[]
+  loading: boolean
 }
 
 const PRODUCTS = [
@@ -131,39 +134,47 @@ const PRODUCTS = [
 ]
 
 const PRICE_RANGES: Record<string, [number, number]> = {
-  "iPhone": [89900, 129990],
-  "MacBook": [99990, 329990],
+  iPhone: [89900, 129990],
+  MacBook: [99990, 329990],
   "Samsung Galaxy S": [74990, 119990],
-  "PlayStation": [49990, 54990],
-  "Nintendo": [34990, 39990],
-  "Xbox": [49990, 54990],
-  "iPad": [79990, 199990],
-  "AirPods": [19990, 29990],
-  "Dyson": [39990, 59990],
+  PlayStation: [49990, 54990],
+  Nintendo: [34990, 39990],
+  Xbox: [49990, 54990],
+  iPad: [79990, 199990],
+  AirPods: [19990, 29990],
+  Dyson: [39990, 59990],
   "Sony WH": [24990, 34990],
   "LG OLED": [129990, 299990],
-  "Bose": [24990, 44990],
-  "Canon": [149990, 249990],
-  "GoPro": [34990, 49990],
-  "DJI": [69990, 149990],
-  "Kindle": [11990, 17990],
+  Bose: [24990, 44990],
+  Canon: [149990, 249990],
+  GoPro: [34990, 49990],
+  DJI: [69990, 149990],
+  Kindle: [11990, 17990],
   "Apple Watch": [29990, 79990],
   "Galaxy Watch": [24990, 44990],
-  "Garmin": [49990, 89990],
+  Garmin: [49990, 89990],
   "Meta Quest": [39990, 54990],
   "Steam Deck": [49990, 69990],
-  "ROG": [59990, 99990],
-  "Razer": [159990, 299990],
-  "ThinkPad": [99990, 199990],
-  "Surface": [89990, 179990],
+  ROG: [59990, 99990],
+  Razer: [159990, 299990],
+  ThinkPad: [99990, 199990],
+  Surface: [89990, 179990],
   "Dell XPS": [119990, 249990],
   "HP Spectre": [89990, 149990],
   "Mac Studio": [249990, 599990],
   "Mac mini": [69990, 149990],
-  "NVIDIA": [89990, 199990],
-  "AMD": [29990, 54990],
-  "Intel": [29990, 54990],
+  NVIDIA: [89990, 199990],
+  AMD: [29990, 54990],
+  Intel: [29990, 54990],
 }
+
+const MARKETPLACES = [
+  { name: "Ozon", domain: "ozon.ru" },
+  { name: "Wildberries", domain: "wildberries.ru" },
+  { name: "Яндекс Маркет", domain: "market.yandex.ru" },
+  { name: "DNS", domain: "dns-shop.ru" },
+  { name: "Ситилинк", domain: "citilink.ru" },
+]
 
 function generatePrice(product: string): string {
   for (const [key, [min, max]] of Object.entries(PRICE_RANGES)) {
@@ -176,10 +187,9 @@ function generatePrice(product: string): string {
   return `${price.toLocaleString("ru-RU")} ₽`
 }
 
-function generateSearchResults(product: string): string[] {
-  const sites = ["ozon.ru", "wildberries.ru", "market.yandex.ru", "dns-shop.ru", "citilink.ru"]
-  const shuffled = sites.sort(() => Math.random() - 0.5).slice(0, 3)
-  return shuffled.map((site) => `${site}/search?q=${encodeURIComponent(product)}`)
+function pickMarkets() {
+  const shuffled = [...MARKETPLACES].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, 3)
 }
 
 export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
@@ -192,87 +202,136 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
     }))
   )
   const [browser, setBrowser] = React.useState<BrowserState>({
+    phase: "idle",
     url: "",
     query: "",
-    results: [],
-    active: false,
+    siteResults: [],
+    loading: false,
   })
-  const [currentIndex, setCurrentIndex] = React.useState(0)
+  const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [isRunning, setIsRunning] = React.useState(false)
   const [isDone, setIsDone] = React.useState(false)
   const [logs, setLogs] = React.useState<string[]>([])
 
+  const dataRef = React.useRef(data)
+  dataRef.current = data
+
+  const currentIndexRef = React.useRef(currentIndex)
+  currentIndexRef.current = currentIndex
+
+  const isRunningRef = React.useRef(isRunning)
+  isRunningRef.current = isRunning
+
   const addLog = React.useCallback((msg: string) => {
-    setLogs((prev) => [...prev, msg])
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString("ru-RU")} ${msg}`])
   }, [])
 
   const processedCount = data.filter((r) => r.status === "найдено" || r.status === "не найдено").length
   const progress = Math.round((processedCount / data.length) * 100)
 
-  React.useEffect(() => {
-    if (!isRunning || currentIndex >= data.length) {
-      if (currentIndex >= data.length && isRunning) {
-        setIsRunning(false)
-        setIsDone(true)
-        addLog("✅ Все строки обработаны. Агент завершил работу.")
-      }
+  const processNext = React.useCallback(() => {
+    if (!isRunningRef.current) return
+
+    const nextIdx = currentIndexRef.current + 1
+    if (nextIdx >= dataRef.current.length) {
+      setIsRunning(false)
+      setIsDone(true)
+      addLog("✅ Все строки обработаны. Агент завершил работу.")
       return
     }
 
-    const product = data[currentIndex].product
-    const searchUrls = generateSearchResults(product)
+    setCurrentIndex(nextIdx)
+    const product = dataRef.current[nextIdx].product
     const price = generatePrice(product)
+    const markets = pickMarkets()
+    const found = Math.random() > 0.05
 
-    const timers: ReturnType<typeof setTimeout>[] = []
-
-    timers.push(setTimeout(() => {
-      setData((prev) =>
-        prev.map((row, i) =>
-          i === currentIndex ? { ...row, status: "обработка" as const } : row
-        )
+    setData((prev) =>
+      prev.map((row, i) =>
+        i === nextIdx ? { ...row, status: "обработка" as const } : row
       )
-      setBrowser({ url: `https://google.com/search?q=${encodeURIComponent(product + " цена купить")}`, query: product, results: [], active: true })
-      addLog(`🔍 Обработка строки ${currentIndex + 1}: ${product}`)
-    }, 200))
+    )
 
-    timers.push(setTimeout(() => {
-      setBrowser((prev) => ({ ...prev, url: searchUrls[0], results: [] }))
-      addLog(`  ↳ Открываю ${searchUrls[0]}`)
-    }, 800))
+    setBrowser({
+      phase: "google",
+      url: `https://www.google.com/search?q=${encodeURIComponent(product + " цена купить")}`,
+      query: product,
+      siteResults: [],
+      loading: true,
+    })
+    addLog(`🔍 [${nextIdx + 1}/${dataRef.current.length}] ${product}`)
 
-    timers.push(setTimeout(() => {
-      setBrowser((prev) => ({ ...prev, url: searchUrls[1], results: [`Найдено: ${product} — ${price}`] }))
-      addLog(`  ↳ Открываю ${searchUrls[1]}`)
-    }, 1400))
+    setTimeout(() => {
+      if (!isRunningRef.current) return
+      setBrowser({
+        phase: "site1",
+        url: `https://${markets[0].domain}/search?q=${encodeURIComponent(product)}`,
+        query: product,
+        siteResults: [],
+        loading: true,
+      })
+      addLog(`  ↳ Открываю ${markets[0].name}...`)
+    }, 700)
 
-    timers.push(setTimeout(() => {
-      setBrowser((prev) => ({ ...prev, url: searchUrls[2], results: [`Найдено: ${product} — ${price}`, `Источник: ${searchUrls[1]}`] }))
-      addLog(`  ↳ Цена найдена: ${price}`)
-    }, 1800))
+    setTimeout(() => {
+      if (!isRunningRef.current) return
+      setBrowser({
+        phase: "site2",
+        url: `https://${markets[1].domain}/catalog?q=${encodeURIComponent(product)}`,
+        query: product,
+        siteResults: found
+          ? [{ title: `${product} — ${price}`, price, site: markets[0].name }]
+          : [],
+        loading: true,
+      })
+      addLog(`  ↳ Проверяю ${markets[1].name}...`)
+    }, 1400)
 
-    timers.push(setTimeout(() => {
-      const found = Math.random() > 0.05
+    setTimeout(() => {
+      if (!isRunningRef.current) return
+      setBrowser({
+        phase: "found",
+        url: `https://${markets[2].domain}/product?q=${encodeURIComponent(product)}`,
+        query: product,
+        siteResults: found
+          ? [
+              { title: `${product} — ${price}`, price, site: markets[0].name },
+              { title: `${product} — от ${price}`, price, site: markets[1].name },
+            ]
+          : [],
+        loading: false,
+      })
+      if (found) {
+        addLog(`  ✅ Найдено: ${price} (${markets[0].name})`)
+      } else {
+        addLog(`  ❌ Цена не найдена`)
+      }
+    }, 2000)
+
+    setTimeout(() => {
+      if (!isRunningRef.current) return
       setData((prev) =>
         prev.map((row, i) =>
-          i === currentIndex
+          i === nextIdx
             ? { ...row, price: found ? price : "", status: found ? ("найдено" as const) : ("не найдено" as const) }
             : row
         )
       )
-      setBrowser({ url: "", query: "", results: [], active: false })
-      setCurrentIndex((prev) => prev + 1)
-    }, 2200))
-
-    return () => timers.forEach(clearTimeout)
-  }, [isRunning, currentIndex, data, addLog])
+      setBrowser({ phase: "idle", url: "", query: "", siteResults: [], loading: false })
+      processNext()
+    }, 2600)
+  }, [addLog])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
+    isRunningRef.current = true
     addLog("🚀 Агент запущен. Начинаю обработку таблицы...")
-  }, [addLog])
+    setTimeout(processNext, 300)
+  }, [addLog, processNext])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
+    isRunningRef.current = false
     addLog("⏸ Агент приостановлен.")
   }, [addLog])
 
@@ -283,7 +342,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         <h2 className="text-lg font-semibold">Обработка данных ИИ-агентом</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        ИИ-агент берёт товары из таблицы, открывает браузер через MCP Playwright, ищет цены и заполняет результат.
+        ИИ-агент берёт товары из таблицы, ищет цены через браузер и заполняет результат.
       </p>
 
       <div className="flex items-center gap-4">
@@ -303,18 +362,18 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-        <Card className="min-h-0">
+        <Card className="min-h-0 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <span className="inline-flex size-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white">📊</span>
               Таблица данных
-              {currentIndex > 0 && (
-                <span className="text-xs text-muted-foreground">строка {Math.min(currentIndex + 1, data.length)}</span>
+              {currentIndex >= 0 && !isDone && (
+                <span className="text-xs text-muted-foreground">строка {currentIndex + 1}</span>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="min-h-0 pb-0">
-            <ScrollArea className="h-[340px]">
+          <CardContent className="min-h-0 flex-1 pb-0">
+            <ScrollArea className="h-[400px]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b text-left text-muted-foreground">
@@ -356,12 +415,12 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
         </Card>
 
         <div className="flex min-h-0 flex-col gap-4">
-          <Card className="min-h-0">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <span className="inline-flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">🌐</span>
                 Chrome + MCP Playwright
-                {browser.active && (
+                {browser.phase !== "idle" && (
                   <span className="animate-pulse text-[10px] text-blue-500">● активно</span>
                 )}
               </CardTitle>
@@ -369,7 +428,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
             <CardContent>
               <div className="overflow-hidden rounded-lg border">
                 <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-1.5">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     <div className="size-2.5 rounded-full bg-red-400" />
                     <div className="size-2.5 rounded-full bg-yellow-400" />
                     <div className="size-2.5 rounded-full bg-green-400" />
@@ -378,27 +437,61 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                     {browser.url || "about:blank"}
                   </div>
                 </div>
-                <div className="min-h-[100px] bg-background p-3">
-                  {browser.active ? (
+                <div className="min-h-[160px] bg-background p-3">
+                  {browser.phase === "idle" && !isDone && (
+                    <p className="text-xs text-muted-foreground">Браузер ожидает запуска агента...</p>
+                  )}
+                  {browser.phase === "idle" && isDone && (
+                    <div className="flex flex-col items-center justify-center gap-2 py-4">
+                      <span className="text-2xl">✅</span>
+                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Обработка завершена</p>
+                    </div>
+                  )}
+                  {browser.phase === "google" && (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs font-medium">Поиск: {browser.query}</p>
-                      {browser.results.length > 0 ? (
-                        <div className="flex flex-col gap-1.5">
-                          {browser.results.map((r, i) => (
-                            <div key={i} className="rounded bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-700 dark:text-emerald-400">
-                              {r}
-                            </div>
-                          ))}
+                      <div className="text-xs font-medium text-muted-foreground">Google Search</div>
+                      <div className="rounded border bg-muted/50 px-2 py-1 font-mono text-[11px]">{browser.query} цена купить</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="animate-spin text-blue-500">⟳</span>
+                        Поиск в Google...
+                      </div>
+                    </div>
+                  )}
+                  {(browser.phase === "site1" || browser.phase === "site2") && browser.siteResults.length === 0 && (
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {browser.phase === "site1" ? "Маркетплейс" : "Сравнение цен"}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="animate-spin text-blue-500">⟳</span>
+                        Загрузка страницы...
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+                        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+                        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+                      </div>
+                    </div>
+                  )}
+                  {(browser.phase === "site2" || browser.phase === "found") && browser.siteResults.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs font-medium text-muted-foreground">Найденные результаты:</div>
+                      {browser.siteResults.map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 rounded-lg border bg-emerald-500/5 px-2.5 py-1.5">
+                          <span className="text-sm">💰</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-[11px] font-medium text-foreground">{r.title}</div>
+                            <div className="text-[10px] text-muted-foreground">{r.site}</div>
+                          </div>
                         </div>
-                      ) : (
+                      ))}
+                      {browser.loading && (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="animate-spin">⟳</span>
-                          Загрузка страницы...
+                          <span className="animate-spin text-blue-500">⟳</span>
+                          Проверяю следующий магазин...
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Браузер ожидает запуска агента...</p>
                   )}
                 </div>
               </div>
@@ -416,12 +509,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                     <p className="text-muted-foreground">Нажмите «Запуск» для начала обработки</p>
                   )}
                   {logs.map((log, i) => (
-                    <div key={i} className="text-muted-foreground">
-                      <span className="text-[9px] opacity-50">
-                        {new Date().toLocaleTimeString("ru-RU")}
-                      </span>{" "}
-                      {log}
-                    </div>
+                    <div key={i} className="text-muted-foreground">{log}</div>
                   ))}
                 </div>
               </ScrollArea>
