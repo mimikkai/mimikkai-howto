@@ -130,7 +130,7 @@ Success signals:
 
 ### Phase 4: Миграция `email-outreach`
 
-- [ ] Task 14: Создать `lib/cases/email-outreach/data.ts` — перенести `EMAIL_CONTACTS` (30 записей, ~280 строк) и интерфейс `EmailContact` из `lib/case-config.tsx`.
+- [x] Task 14: Создать `lib/cases/email-outreach/data.ts` — перенести `EMAIL_CONTACTS` (30 записей, ~280 строк) и интерфейс `EmailContact` из `lib/case-config.tsx`.
   - Files: `lib/cases/email-outreach/data.ts`
   - **LOGGING:** `console.debug('[email-outreach:data] loaded', { count: EMAIL_CONTACTS.length })`
 
