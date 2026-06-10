@@ -51,7 +51,7 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
             </div>
             <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
               <p className="text-xs text-muted-foreground italic leading-relaxed">
-                &laquo;Ты — агент для поиска цен на товары в интернете. Для каждого товара выполни шаги ниже и верни результат в формате JSON.&raquo;
+                &laquo;Ты — агент для поиска цен на товары в интернете. Для каждого товара выполни шаги ниже.&raquo;
               </p>
               <div className="space-y-1.5">
                 {PROMPT_STEPS.map((s, i) => (
