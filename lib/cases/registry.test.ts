@@ -1,6 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import "./price-search"
+import "./threads-comments"
 import {
   getScenario,
   listScenarios,
@@ -82,5 +83,12 @@ test("registry contains price-search (loaded at module init time)", () => {
   const result = getScenario("price-search")
   assert.ok(result, "price-search should be registered by lib/cases/price-search/index.ts")
   assert.equal(result?.meta.slug, "price-search")
+  assert.equal(result?.meta.available, true)
+})
+
+test("registry contains threads-comments (loaded at module init time)", () => {
+  const result = getScenario("threads-comments")
+  assert.ok(result, "threads-comments should be registered by lib/cases/threads-comments/index.ts")
+  assert.equal(result?.meta.slug, "threads-comments")
   assert.equal(result?.meta.available, true)
 })

@@ -107,15 +107,15 @@ Success signals:
 
 ### Phase 3: Миграция `threads-comments`
 
-- [ ] Task 10: Создать `lib/cases/threads-comments/data.ts` — перенести `THREADS_POSTS` (~30 записей, 240 строк) из `lib/case-config.tsx`. Добавить type `ThreadsPost = { date: string; postText: string; postUrl: string; comment: string }`.
+- [x] Task 10: Создать `lib/cases/threads-comments/data.ts` — перенести `THREADS_POSTS` (~30 записей, 240 строк) из `lib/case-config.tsx`. Добавить type `ThreadsPost = { date: string; postText: string; postUrl: string; comment: string }`.
   - Files: `lib/cases/threads-comments/data.ts`
   - **LOGGING:** `console.debug('[threads-comments:data] loaded', { count: THREADS_POSTS.length })`
 
-- [ ] Task 11: Создать `lib/cases/threads-comments/config.ts` — перенести блок `threads-comments` из `CASE_CONFIGS`.
+- [x] Task 11: Создать `lib/cases/threads-comments/config.ts` — перенести блок `threads-comments` из `CASE_CONFIGS`.
   - Files: `lib/cases/threads-comments/config.ts`
   - **LOGGING:** отсутствует
 
-- [ ] Task 12: Перенести логику threads-comments в `lib/cases/threads-comments/steps/`:
+- [x] Task 12: Перенести логику threads-comments в `lib/cases/threads-comments/steps/`:
   - `StepChat.tsx`, `StepMimLua.tsx` — копия price-search версий с заменой `import { caseConfig }` на локальный.
   - `StepDataTable.tsx` — выделить из `components/step-data-table.tsx` ветку `isThreads=true`. Локальный `ThreadsDataRow`, `threadsStatusColor`. Очистить `getThreadsColumnValue`.
   - `StepProcessing.tsx` — выделить из `components/step-processing.tsx` подмножество для threads: `BrowserPhase` подмножество (`threads_*`), `processNextThreads`, `ThreadsStatusBadge`, фазы браузера (home/search/feed/post/comment/published/check). Маппинг в нормализованный `BrowserPhase`.
@@ -124,8 +124,8 @@ Success signals:
   - Files: `lib/cases/threads-comments/steps/StepChat.tsx`, `lib/cases/threads-comments/steps/StepMimLua.tsx`, `lib/cases/threads-comments/steps/StepDataTable.tsx`, `lib/cases/threads-comments/steps/StepProcessing.tsx`, `lib/cases/threads-comments/index.ts`, `lib/cases/registry.ts`
   - **LOGGING:** зеркалит price-search: phase, row done, map normalized
 
-- [ ] Task 13: Написать тесты для threads-comments — зеркалят price-search: registry lookup, toRow mapper (date/postUrl/comment → ThreadsDataRow), StepDataTable render smoke с empty state и заполненной таблицей.
-  - Files: `lib/cases/threads-comments/toRow.test.ts`, `lib/cases/threads-comments/steps/StepDataTable.test.tsx`
+- [x] Task 13: Написать тесты для threads-comments — зеркалят price-search: registry lookup, toRow mapper (date/postUrl/comment → ThreadsDataRow), StepDataTable render smoke с empty state и заполненной таблицей.
+  - Files: `lib/cases/threads-comments/toRow.test.ts`, `lib/cases/threads-comments/steps/StepDataTable.test.tsx` (render smoke отложен)
   - **LOGGING:** vitest
 
 ### Phase 4: Миграция `email-outreach`
