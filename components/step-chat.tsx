@@ -167,7 +167,7 @@ export function StepChat({ onComplete }: StepChatProps) {
           </div>
           <Button
             size="lg"
-            className="gap-3 rounded-2xl px-8 py-6 text-lg shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary/30"
+            className="gap-3 rounded-2xl px-6 py-5 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary/30 sm:px-8 sm:py-6 sm:text-lg"
             onClick={handleCreateAgent}
           >
             <span className="text-xl">💬</span>

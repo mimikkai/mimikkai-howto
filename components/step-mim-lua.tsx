@@ -83,7 +83,7 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
               <span className="text-sm font-medium">Структура данных</span>
             </div>
             <div className="rounded-xl border bg-muted/30 p-4">
-              <div className="flex items-stretch gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-4">
                 <div className="flex-1 space-y-2">
                   <div className="mb-2 flex items-center gap-1.5">
                     <span className="inline-flex size-2 rounded-full bg-amber-500" />
@@ -112,11 +112,11 @@ export function StepMimLua({ onNext, onBack }: StepMimLuaProps) {
                   ))}
                 </div>
 
-                <div className="flex items-center">
-                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                    <div className="h-4 w-px bg-border" />
+                <div className="flex items-center justify-center sm:justify-center">
+                  <div className="flex flex-row items-center gap-1 text-muted-foreground sm:flex-col">
+                    <div className="h-px w-4 bg-border sm:h-4 sm:w-px" />
                     <span className="text-xs">→</span>
-                    <div className="h-4 w-px bg-border" />
+                    <div className="h-px w-4 bg-border sm:h-4 sm:w-px" />
                   </div>
                 </div>
 

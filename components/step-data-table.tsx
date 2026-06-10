@@ -247,7 +247,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
               </div>
             </div>
           ) : (
-            <ScrollArea ref={scrollRef} className="h-[440px]">
+            <ScrollArea ref={scrollRef} className="md:h-[440px] h-[calc(100dvh-340px)]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
                   <tr className="border-b text-left text-muted-foreground">
@@ -255,7 +255,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                     <th className="px-3 py-2 font-medium">
                       A — Название товара
                     </th>
-                    <th className="w-36 px-3 py-2 font-medium">B — Цена</th>
+                    <th className="hidden w-36 px-3 py-2 font-medium sm:table-cell">B — Цена</th>
                     <th className="w-28 px-3 py-2 font-medium">C — Статус</th>
                   </tr>
                 </thead>
@@ -279,7 +279,7 @@ export function StepDataTable({ onNext, onBack }: StepDataTableProps) {
                           {row.id}
                         </td>
                         <td className="px-3 py-2 font-medium">{row.product}</td>
-                        <td className="px-3 py-2 text-muted-foreground">
+                        <td className="hidden px-3 py-2 text-muted-foreground sm:table-cell">
                           {row.price || "—"}
                         </td>
                         <td className="px-3 py-2">

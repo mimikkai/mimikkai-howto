@@ -307,12 +307,25 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
   const [chat, setChat] = React.useState<ChatMessage[]>([])
   const [urlFlash, setUrlFlash] = React.useState(false)
   const [activePane, setActivePane] = React.useState<0 | 1 | 2>(0)
+  const [userTouchedTab, setUserTouchedTab] = React.useState(false)
+  const [agentPane, setAgentPane] = React.useState<0 | 1 | 2>(0)
   const [tableFlash, setTableFlash] = React.useState(false)
   const [chatFading, setChatFading] = React.useState(false)
+
+  const setAgentActivePane = React.useCallback(
+    (pane: 0 | 1 | 2) => {
+      setAgentPane(pane)
+      if (!userTouchedTabRef.current) {
+        setActivePane(pane)
+      }
+    },
+    []
+  )
 
   const dataRef = React.useRef(data)
   const currentIndexRef = React.useRef(currentIndex)
   const isRunningRef = React.useRef(isRunning)
+  const userTouchedTabRef = React.useRef(userTouchedTab)
 
   React.useEffect(() => {
     dataRef.current = data
@@ -373,7 +386,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
 
     // STEP 1: Read from table — first fade out & clear chat
     schedule(() => {
-      setActivePane(1)
+      setAgentActivePane(1)
       setChatFading(true)
     }, 0)
 
@@ -383,7 +396,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     }, 400)
 
     schedule(() => {
-      setActivePane(0)
+      setAgentActivePane(0)
       setTableFlash(true)
       setTimeout(() => setTableFlash(false), 600)
       setData((prev) =>
@@ -397,13 +410,13 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
 
     // Pause to show table highlight
     schedule(() => {
-      setActivePane(1)
+      setAgentActivePane(1)
       addChat("agent", `🔍 Начинаю поиск цены для "${product}"`)
     }, 1500)
 
     // STEP 2: Open Google, start typing
     schedule(() => {
-      setActivePane(2)
+      setAgentActivePane(2)
       setBrowser({
         phase: "typing",
         tabs: [
@@ -612,7 +625,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
 
     // Price confirmed
     schedule(() => {
-      setActivePane(1)
+      setAgentActivePane(1)
       setBrowser((prev) => ({
         ...prev,
         phase: "price_found",
@@ -628,7 +641,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
 
     // STEP 3: Writing to table
     schedule(() => {
-      setActivePane(1)
+      setAgentActivePane(1)
       setBrowser((prev) => ({
         ...prev,
         phase: "writing",
@@ -637,7 +650,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
     }, 19500)
 
     schedule(() => {
-      setActivePane(0)
+      setAgentActivePane(0)
       setTableFlash(true)
     }, 20200)
 
@@ -656,10 +669,10 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
       )
       setTimeout(() => setTableFlash(false), 600)
       setBrowser({ ...IDLE_BROWSER })
-      setActivePane(0)
+      setAgentActivePane(0)
       processNextRef.current()
     }, 21000)
-  }, [addChat, flashUrl])
+  }, [addChat, flashUrl, setAgentActivePane])
 
   React.useEffect(() => {
     processNextRef.current = processNext
@@ -668,6 +681,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
     isRunningRef.current = true
+    setUserTouchedTab(false)
     addChat("agent", "🚀 Агент запущен.")
     setTimeout(() => processNextRef.current(), 300)
   }, [addChat])
@@ -675,6 +689,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
     isRunningRef.current = false
+    setUserTouchedTab(false)
     addChat("agent", "⏸ Пауза.")
   }, [addChat])
 
@@ -725,18 +740,57 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
         </span>
         {!isDone && (
           <Button
-            size="sm"
+            size={isRunning ? "sm" : "default"}
             variant={isRunning ? "outline" : "default"}
             onClick={isRunning ? handlePause : handleStart}
+            className={
+              !isRunning
+                ? "shadow-lg shadow-primary/30 transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-primary/40 active:scale-100"
+                : ""
+            }
           >
-            {isRunning ? "⏸ Пауза" : "▶ Запуск"}
+            {isRunning ? "⏸ Пауза" : "🚀 Запустить агента"}
           </Button>
         )}
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3 xl:grid-cols-3">
+      <div className="flex gap-1 rounded-lg bg-muted p-1">
+        {([
+          { pane: 0 as const, icon: "📊", label: "Таблица", color: "emerald" },
+          { pane: 1 as const, icon: "🤖", label: "Чат ИИ", color: "purple" },
+          { pane: 2 as const, icon: "🌐", label: "Браузер", color: "blue" },
+        ]).map(({ pane, icon, label, color }) => {
+          const isActive = activePane === pane
+          const hasAgentSignal = agentPane === pane && userTouchedTab && agentPane !== activePane
+          return (
+            <button
+              key={pane}
+              onClick={() => {
+                setActivePane(pane)
+                if (isRunning) setUserTouchedTab(true)
+              }}
+              className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                isActive
+                  ? `bg-background text-foreground shadow-sm`
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>{icon}</span>
+              <span className="hidden sm:inline">{label}</span>
+              {hasAgentSignal && (
+                <span className={`absolute -right-0.5 -top-0.5 size-2 rounded-full bg-${color}-500 animate-pulse`} />
+              )}
+              {isActive && isRunning && agentPane === pane && (
+                <span className={`size-1.5 rounded-full bg-${color}-500 animate-pulse`} />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="min-h-0 flex-1 md:grid md:grid-cols-3 md:gap-3">
         <Card
-          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 0 && isRunning ? "shadow-md ring-2 ring-emerald-500/30" : ""}`}
+          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 0 && isRunning ? "shadow-md ring-2 ring-emerald-500/30" : ""} ${activePane !== 0 ? "hidden md:flex" : "flex"}`}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -752,7 +806,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="h-[460px]">
+            <ScrollArea className="md:h-[460px] h-[calc(100dvh-320px)]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b text-left text-muted-foreground">
@@ -801,7 +855,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
         </Card>
 
         <Card
-          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 1 && isRunning ? "shadow-md ring-2 ring-purple-500/30" : ""}`}
+          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 1 && isRunning ? "shadow-md ring-2 ring-purple-500/30" : ""} ${activePane !== 1 ? "hidden md:flex" : "flex"}`}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -817,7 +871,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
-            <ScrollArea className="h-[460px] pr-2">
+            <ScrollArea className="md:h-[460px] h-[calc(100dvh-320px)] pr-2">
               <div
                 className={`flex flex-col gap-2 transition-opacity duration-300 ${chatFading ? "opacity-0" : "opacity-100"}`}
               >
@@ -884,7 +938,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
         </Card>
 
         <Card
-          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 2 && isRunning ? "shadow-md ring-2 ring-blue-500/30" : ""}`}
+          className={`flex min-h-0 flex-col transition-all duration-300 ${activePane === 2 && isRunning ? "shadow-md ring-2 ring-blue-500/30" : ""} ${activePane !== 2 ? "hidden md:flex" : "flex"}`}
         >
           <CardHeader className="pb-2">
             <div>
@@ -1346,7 +1400,7 @@ export function StepProcessing({ onBack }: StepProcessingProps) {
       </div>
 
       {showCta && !isDone && (
-        <div className="animate-in slide-in-from-bottom-4 fade-in fixed right-6 bottom-6 z-50 duration-500">
+        <div className="animate-in slide-in-from-bottom-4 fade-in fixed right-4 bottom-4 z-50 duration-500 md:right-6 md:bottom-6">
           {ctaCollapsed ? (
             <a
               href="https://panel.mimikkai.ru"
