@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS } from "@/lib/case-config"
+import { CASE_CONFIGS, PRODUCTS, THREADS_POSTS, EMAIL_CONTACTS, EmailContact } from "@/lib/case-config"
 
 interface StepDataTableProps {
   caseSlug: string
@@ -37,6 +37,22 @@ interface ThreadsDataRow {
   status: "ожидает" | "обработка" | "Готово"
 }
 
+interface EmailDataRow {
+  id: number
+  sphere: string
+  senderName: string
+  caseUsed: string
+  company: string
+  site: string
+  email: string
+  phone: string
+  letter1: string
+  sendStatus: string
+  letter2: string
+  letter3: string
+  letter4: string
+}
+
 const BATCH_SIZE = 5
 const BATCH_DELAY_MS = 50
 
@@ -47,17 +63,19 @@ export function StepDataTable({
 }: StepDataTableProps) {
   const caseConfig = CASE_CONFIGS[caseSlug]
   const isThreads = caseSlug === "threads-comments"
+  const isEmail = caseSlug === "email-outreach"
 
   const [priceData, setPriceData] = React.useState<PriceDataRow[]>([])
   const [threadsData, setThreadsData] = React.useState<ThreadsDataRow[]>([])
+  const [emailData, setEmailData] = React.useState<EmailDataRow[]>([])
   const [isFilling, setIsFilling] = React.useState(false)
   const [isFilled, setIsFilled] = React.useState(false)
   const [lastAddedCount, setLastAddedCount] = React.useState(0)
-  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | null>(null)
+  const [selectedRow, setSelectedRow] = React.useState<ThreadsDataRow | EmailDataRow | null>(null)
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
-  const totalRows = isThreads ? THREADS_POSTS.length : PRODUCTS.length
-  const dataLength = isThreads ? threadsData.length : priceData.length
+  const totalRows = isEmail ? EMAIL_CONTACTS.length : isThreads ? THREADS_POSTS.length : PRODUCTS.length
+  const dataLength = isEmail ? emailData.length : isThreads ? threadsData.length : priceData.length
   const fillProgress = Math.round((dataLength / totalRows) * 100)
 
   const handleFillData = React.useCallback(() => {
@@ -65,6 +83,7 @@ export function StepDataTable({
     setIsFilling(true)
     setPriceData([])
     setThreadsData([])
+    setEmailData([])
     setIsFilled(false)
 
     let batchIndex = 0
@@ -74,7 +93,28 @@ export function StepDataTable({
       const end = Math.min(start + BATCH_SIZE, totalRows)
       batchIndex++
 
-      if (isThreads) {
+      if (isEmail) {
+        const newRows: EmailDataRow[] = []
+        for (let i = start; i < end; i++) {
+          const c = EMAIL_CONTACTS[i]
+          newRows.push({
+            id: i + 1,
+            sphere: c.sphere,
+            senderName: c.senderName,
+            caseUsed: c.caseUsed,
+            company: "",
+            site: "",
+            email: "",
+            phone: "",
+            letter1: "",
+            sendStatus: "ожидает",
+            letter2: "",
+            letter3: "",
+            letter4: "",
+          })
+        }
+        setEmailData((prev) => [...prev, ...newRows])
+      } else if (isThreads) {
         const newRows: ThreadsDataRow[] = []
         for (let i = start; i < end; i++) {
           newRows.push({
@@ -108,7 +148,7 @@ export function StepDataTable({
         setIsFilled(true)
       }
     }, BATCH_DELAY_MS)
-  }, [isFilling, isThreads, totalRows])
+  }, [isFilling, isEmail, isThreads, totalRows])
 
   React.useEffect(() => {
     if (isFilling && scrollRef.current) {
@@ -119,7 +159,7 @@ export function StepDataTable({
         scrollEl.scrollTop = scrollEl.scrollHeight
       }
     }
-  }, [priceData, threadsData, isFilling])
+  }, [priceData, threadsData, emailData, isFilling])
 
   const priceStatusColor: Record<string, string> = {
     ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
@@ -134,7 +174,32 @@ export function StepDataTable({
     Готово: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   }
 
+  const emailStatusColor: Record<string, string> = {
+    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
+    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    "Письмо отправлено и сохранено": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    ошибка: "bg-red-500/15 text-red-700 dark:text-red-400",
+  }
+
   const columns = caseConfig.dataTable.columns
+
+  const getEmailColumnValue = (row: EmailDataRow, colId: string): string => {
+    switch (colId) {
+      case "A": return row.sphere
+      case "B": return row.senderName
+      case "C": return row.caseUsed
+      case "D": return row.company
+      case "E": return row.site
+      case "F": return row.email
+      case "G": return row.phone
+      case "H": return row.letter1
+      case "I": return row.sendStatus
+      case "J": return row.letter2
+      case "K": return row.letter3
+      case "L": return row.letter4
+      default: return ""
+    }
+  }
 
   const getThreadsColumnValue = (row: ThreadsDataRow, colId: string): string => {
     switch (colId) {
@@ -205,6 +270,71 @@ export function StepDataTable({
                 <p className="text-xs">{caseConfig.dataTable.emptyDesc}</p>
               </div>
             </div>
+          ) : isEmail ? (
+            <ScrollArea
+              ref={scrollRef}
+              className="h-[calc(100dvh-340px)] md:h-[440px]"
+            >
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="w-8 px-2 py-2 font-medium">#</th>
+                    <th className="px-2 py-2 font-medium">A — Сфера</th>
+                    <th className="hidden px-2 py-2 font-medium lg:table-cell">B — От кого</th>
+                    <th className="px-2 py-2 font-medium">D — Компания</th>
+                    <th className="hidden px-2 py-2 font-medium md:table-cell">E — Сайт</th>
+                    <th className="hidden px-2 py-2 font-medium sm:table-cell">F — Почта</th>
+                    <th className="w-28 px-2 py-2 font-medium">I — Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emailData.map((row, index) => {
+                    const isNew =
+                      index >= emailData.length - lastAddedCount && isFilling
+                    return (
+                      <tr
+                        key={row.id}
+                        className={`cursor-pointer border-b transition-colors hover:bg-muted/50 ${isNew ? "row-animate-in" : ""}`}
+                        style={
+                          isNew
+                            ? {
+                                animationDelay: `${(index % BATCH_SIZE) * 40}ms`,
+                              }
+                            : undefined
+                        }
+                        onClick={() => setSelectedRow(row)}
+                      >
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {row.id}
+                        </td>
+                        <td className="px-2 py-2 font-medium">{row.sphere}</td>
+                        <td className="hidden px-2 py-2 text-muted-foreground lg:table-cell">
+                          {row.senderName || "—"}
+                        </td>
+                        <td className="px-2 py-2 font-medium">{row.company || "—"}</td>
+                        <td className="hidden px-2 py-2 text-muted-foreground md:table-cell">
+                          {row.site ? (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              {row.site.replace(/^https?:\/\//, "")}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="hidden px-2 py-2 text-muted-foreground sm:table-cell">
+                          {row.email || "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${emailStatusColor[row.sendStatus] || emailStatusColor["ожидает"]}`}
+                          >
+                            {row.sendStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </ScrollArea>
           ) : isThreads ? (
             <ScrollArea
               ref={scrollRef}
@@ -360,7 +490,7 @@ export function StepDataTable({
         </div>
       </div>
 
-      {isThreads && selectedRow && (
+      {(isThreads || isEmail) && selectedRow && (
         <Dialog
           open={!!selectedRow}
           onOpenChange={(open) => {
@@ -370,7 +500,7 @@ export function StepDataTable({
           <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>
-                Строка {selectedRow.id}
+                Строка {(selectedRow as ThreadsDataRow | EmailDataRow).id}
               </DialogTitle>
               <DialogDescription>
                 Данные выбранной строки таблицы
@@ -378,13 +508,17 @@ export function StepDataTable({
             </DialogHeader>
             <div className="flex flex-col gap-4">
               {columns.map((col) => {
-                const value = getThreadsColumnValue(selectedRow, col.id)
+                const value = isEmail
+                  ? getEmailColumnValue(selectedRow as EmailDataRow, col.id)
+                  : getThreadsColumnValue(selectedRow as ThreadsDataRow, col.id)
+                const isUrlCol = (isEmail && col.id === "E") || (isThreads && col.id === "B")
+                const isLetterCol = isEmail && ["H", "J", "K", "L"].includes(col.id)
                 return (
                   <div key={col.id} className="flex flex-col gap-1">
                     <span className="text-xs font-medium text-muted-foreground">
                       {col.id} — {col.label}
                     </span>
-                    {col.id === "B" && value ? (
+                    {isUrlCol && value ? (
                       <a
                         href={value}
                         target="_blank"
@@ -393,6 +527,10 @@ export function StepDataTable({
                       >
                         {value}
                       </a>
+                    ) : isLetterCol && value ? (
+                      <div className="max-h-32 overflow-y-auto rounded bg-muted/50 p-2">
+                        <span className="whitespace-pre-wrap text-sm">{value}</span>
+                      </div>
                     ) : (
                       <span className="whitespace-pre-wrap text-sm">
                         {value || "—"}

@@ -41,7 +41,7 @@ const CASES: CaseConfig[] = [
     description:
       "Массовая email-рассылка компаниям с персонализированными предложениями",
     icon: "📧",
-    available: false,
+    available: true,
   },
   {
     slug: "order-processing",
