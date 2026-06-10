@@ -9,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface StepProcessingProps {
   onBack: () => void
-  onComplete: () => void
 }
 
 interface DataRow {
@@ -244,7 +243,7 @@ interface ChatMessage {
   content: string
 }
 
-export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
+export function StepProcessing({ onBack }: StepProcessingProps) {
   const [data, setData] = React.useState<DataRow[]>(() =>
     PRODUCTS.map((product, i) => ({
       id: i + 1,
@@ -264,11 +263,14 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   const [chatFading, setChatFading] = React.useState(false)
 
   const dataRef = React.useRef(data)
-  dataRef.current = data
   const currentIndexRef = React.useRef(currentIndex)
-  currentIndexRef.current = currentIndex
   const isRunningRef = React.useRef(isRunning)
-  isRunningRef.current = isRunning
+
+  React.useEffect(() => { dataRef.current = data }, [data])
+  React.useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
+  React.useEffect(() => { isRunningRef.current = isRunning }, [isRunning])
+
+  const processNextRef = React.useRef<() => void>(() => {})
 
   const addChat = React.useCallback((role: "agent" | "system" | "divider", content: string) => {
     setChat((prev) => [...prev, { role, content }])
@@ -549,16 +551,18 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       setTimeout(() => setTableFlash(false), 600)
       setBrowser({ ...IDLE_BROWSER })
       setActivePane(0)
-      processNext()
+      processNextRef.current()
     }, 21000)
   }, [addChat, flashUrl])
+
+  React.useEffect(() => { processNextRef.current = processNext }, [processNext])
 
   const handleStart = React.useCallback(() => {
     setIsRunning(true)
     isRunningRef.current = true
     addChat("agent", "🚀 Агент запущен.")
-    setTimeout(processNext, 300)
-  }, [addChat, processNext])
+    setTimeout(() => processNextRef.current(), 300)
+  }, [addChat])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
@@ -846,7 +850,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
                   {browser.phase === "google_results" && (
                     <div className="flex flex-col gap-2.5 animate-in fade-in duration-300">
                       <div className="text-[10px] text-muted-foreground mb-1">
-                        Около {(Math.random() * 2 + 0.5).toFixed(1).replace(".", ",")} млн результатов (0,{Math.floor(Math.random() * 40 + 20)} сек.)
+                        Около 1,2 млн результатов (0,32 сек.)
                       </div>
                       {browser.searchResults.map((r, i) => (
                         <div

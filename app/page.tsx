@@ -239,11 +239,6 @@ function PageContent() {
             {step === 4 && (
               <StepProcessing
                 onBack={() => goToStep(3)}
-                onComplete={() => {
-                  alert(
-                    "🎉 Гайд завершён! Теперь вы знаете, как работает платформа MimikkAi."
-                  )
-                }}
               />
             )}
           </>
