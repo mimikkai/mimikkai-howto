@@ -392,22 +392,21 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         loadingProgress: 0,
         highlightedItem: -1,
       })
-    }, 2000)
 
-    // Typing animation
-    let charIdx = 0
-    const typingInterval = setInterval(() => {
-      if (!isRunningRef.current) {
-        clearInterval(typingInterval)
-        return
-      }
-      charIdx++
-      setBrowser((prev) => ({
-        ...prev,
-        typedQuery: googleQuery.slice(0, charIdx),
-      }))
-      if (charIdx >= googleQuery.length) clearInterval(typingInterval)
-    }, 50)
+      let charIdx = 0
+      const typingInterval = setInterval(() => {
+        if (!isRunningRef.current) {
+          clearInterval(typingInterval)
+          return
+        }
+        charIdx++
+        setBrowser((prev) => ({
+          ...prev,
+          typedQuery: googleQuery.slice(0, charIdx),
+        }))
+        if (charIdx >= googleQuery.length) clearInterval(typingInterval)
+      }, 50)
+    }, 2000)
 
     // Google loading after typing
     schedule(() => {
@@ -716,21 +715,21 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ...prev,
         phase: "threads_search_typing",
       }))
-    }, 3500)
 
-    let charIdx = 0
-    const typingInterval = setInterval(() => {
-      if (!isRunningRef.current) {
-        clearInterval(typingInterval)
-        return
-      }
-      charIdx++
-      setBrowser((prev) => ({
-        ...prev,
-        threadsTypedQuery: searchQuery.slice(0, charIdx),
-      }))
-      if (charIdx >= searchQuery.length) clearInterval(typingInterval)
-    }, 80)
+      let charIdx = 0
+      const typingInterval = setInterval(() => {
+        if (!isRunningRef.current) {
+          clearInterval(typingInterval)
+          return
+        }
+        charIdx++
+        setBrowser((prev) => ({
+          ...prev,
+          threadsTypedQuery: searchQuery.slice(0, charIdx),
+        }))
+        if (charIdx >= searchQuery.length) clearInterval(typingInterval)
+      }, 80)
+    }, 3500)
 
     schedule(() => {
       flashUrl()
@@ -825,22 +824,22 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ...prev,
         phase: "threads_comment_typing",
       }))
-    }, 12000)
 
-    let commentCharIdx = 0
-    const commentTypingInterval = setInterval(() => {
-      if (!isRunningRef.current) {
-        clearInterval(commentTypingInterval)
-        return
-      }
-      commentCharIdx++
-      setBrowser((prev) => ({
-        ...prev,
-        threadsTypedComment: post.comment.slice(0, commentCharIdx),
-      }))
-      if (commentCharIdx >= post.comment.length)
-        clearInterval(commentTypingInterval)
-    }, 20)
+      let commentCharIdx = 0
+      const commentTypingInterval = setInterval(() => {
+        if (!isRunningRef.current) {
+          clearInterval(commentTypingInterval)
+          return
+        }
+        commentCharIdx++
+        setBrowser((prev) => ({
+          ...prev,
+          threadsTypedComment: post.comment.slice(0, commentCharIdx),
+        }))
+        if (commentCharIdx >= post.comment.length)
+          clearInterval(commentTypingInterval)
+      }, 20)
+    }, 12000)
 
     schedule(() => {
       setBrowser((prev) => ({
