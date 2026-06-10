@@ -38,6 +38,7 @@ export function StepChat({ onComplete }: StepChatProps) {
   const [isUserTyping, setIsUserTyping] = React.useState(false)
   const [userTypedText, setUserTypedText] = React.useState("")
   const [chatVisible, setChatVisible] = React.useState(false)
+  const [greetingDone, setGreetingDone] = React.useState(false)
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const typingRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
   const userTypingRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
@@ -103,7 +104,7 @@ export function StepChat({ onComplete }: StepChatProps) {
   React.useEffect(() => {
     if (!chatVisible) return
     const timeout = setTimeout(() => {
-      typeAssistantMessage(ASSISTANT_GREETING, () => {})
+      typeAssistantMessage(ASSISTANT_GREETING, () => { setGreetingDone(true) })
     }, 300)
     return () => clearTimeout(timeout)
   }, [chatVisible, typeAssistantMessage])
@@ -206,14 +207,14 @@ export function StepChat({ onComplete }: StepChatProps) {
                     </div>
                   )}
                 </div>
-              </ScrollArea>
-            </CardContent>
+               </ScrollArea>
+             </CardContent>
             <div className="border-t p-4">
               {!variantSelected ? (
-                <div className="flex flex-col gap-2">
+                <div className={`flex flex-col items-end gap-2 transition-all duration-500 ${greetingDone ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
                   <button
                     onClick={handleSelectVariant}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-left text-sm transition-all duration-200 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-left text-sm transition-all duration-200 hover:bg-muted hover:border-primary/50 hover:scale-[1.01] max-w-[85%]"
                   >
                     <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base">🔍</span>
                     <div>
@@ -222,25 +223,24 @@ export function StepChat({ onComplete }: StepChatProps) {
                     </div>
                   </button>
                 </div>
-              ) : (
+              ) : !isDone ? (
                 <div className="px-1 py-1 text-xs text-muted-foreground">
                   {isTyping ? "ИИ-агент формируется..." : "ИИ-агент создан"}
                 </div>
-              )}
+              ) : null}
             </div>
+            {isDone && (
+              <div className="flex justify-end p-4 pt-0 animate-in fade-in slide-in-from-right-4 duration-500">
+                <Button
+                  size="lg"
+                  className="gap-3 rounded-2xl shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 max-w-[85%]"
+                  onClick={() => onComplete(PRESET_PROMPT)}
+                >
+                  <span>🤖</span> Посмотри ИИ-агента
+                </Button>
+              </div>
+            )}
           </Card>
-
-          {isDone && (
-            <div className="flex justify-center animate-in fade-in zoom-in-95 duration-500">
-              <Button
-                size="lg"
-                className="gap-3 text-base px-8 py-6 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105"
-                onClick={() => onComplete(PRESET_PROMPT)}
-              >
-                <span>🤖</span> Посмотри ИИ-агента
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </div>
