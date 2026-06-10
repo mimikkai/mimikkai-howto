@@ -586,6 +586,7 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
   }
 
   const [showCta, setShowCta] = React.useState(false)
+  const [ctaCollapsed, setCtaCollapsed] = React.useState(false)
 
   React.useEffect(() => {
     if (isRunning && !showCta) {
@@ -1059,29 +1060,57 @@ export function StepProcessing({ onBack, onComplete }: StepProcessingProps) {
       </div>
 
       {showCta && !isDone && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 animate-in slide-in-from-bottom-4 fade-in duration-500">
-          <Card className="border-primary/30 shadow-lg">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">✨</span>
-                Создание своего агента
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Пока агент работает — вы можете создать своего ИИ-агента на платформе MimikkAi для своих задач.
-              </p>
-              <a
-                href="https://panel.mimikkai.ru"
-                target="_blank"
-                rel="noopener noreferrer"
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          {ctaCollapsed ? (
+            <a
+              href="https://panel.mimikkai.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Button
+                size="sm"
+                className="shadow-lg gap-1.5"
+                onClick={(e) => { e.preventDefault(); setCtaCollapsed(false) }}
               >
-                <Button size="sm" className="w-full">
-                  Создать своего ИИ-агента →
-                </Button>
-              </a>
-            </CardContent>
-          </Card>
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-background/20 text-[8px]">✨</span>
+                Создать своего ИИ-агента
+                <span className="ml-1 text-xs opacity-60">▲</span>
+              </Button>
+            </a>
+          ) : (
+            <div className="w-80">
+              <Card className="border-primary/30 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">✨</span>
+                    Создание своего агента
+                    <button
+                      onClick={() => setCtaCollapsed(true)}
+                      className="ml-auto text-muted-foreground hover:text-foreground transition-colors text-xs p-1"
+                      aria-label="Свернуть"
+                    >
+                      ▼
+                    </button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Пока агент работает — вы можете создать своего ИИ-агента на платформе MimikkAi для своих задач.
+                  </p>
+                  <a
+                    href="https://panel.mimikkai.ru"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="sm" className="w-full">
+                      Создать своего ИИ-агента →
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       )}
     </div>
