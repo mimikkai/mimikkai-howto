@@ -4,6 +4,12 @@ import { Suspense, useCallback, useEffect, Fragment } from "react"
 import { useSearchParams, useRouter, useParams } from "next/navigation"
 import { ScenarioStep } from "@/components/scenario-step"
 import { listScenarios } from "@/lib/cases/registry"
+import "@/lib/cases/price-search"
+import "@/lib/cases/threads-comments"
+import "@/lib/cases/email-outreach"
+import "@/lib/cases/ticket-reply"
+import "@/lib/cases/crm-order-tracking"
+import "@/lib/cases/marketplace-card-fill"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 type Step = 1 | 2 | 3 | 4
