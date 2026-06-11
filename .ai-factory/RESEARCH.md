@@ -1,35 +1,36 @@
 # Research
 
-Updated: 2026-06-11 15:30
+Updated: 2026-06-11 18:00
 Status: active
 
 ## Active Summary (input for /aif-plan)
 <!-- aif:active-summary:start -->
-Topic: новый кейс «Отслеживание доставок в CRM» (crm-order-tracking)
-Goal: добавить 4-й активный сценарий в интерактивное демо — ИИ-агент отслеживает доставки: заходит в CRM, берёт трек-номер, проверяет статус на сайте трекинга, обновляет CRM, отправляет уведомление клиенту (Telegram/Email/WhatsApp)
+Topic: новый кейс «Заполнение карточек товаров для маркетплейсов» (marketplace-card-fill)
+Goal: добавить 6-й активный сценарий в интерактивное демо — ИИ-агент берёт наименование+артикул, ищет товар на сайте поставщика, собирает характеристики, заполняет сложную карточку Ozon (select/number/textarea/tags), перепроверяет и отправляет
 Constraints:
 - Next.js App Router, Tailwind CSS v4, `prefers-reduced-motion` обязателен
 - Модульная архитектура: `lib/cases/<slug>/` с index, config, data, steps/
 - `createScheduler()` — shared, не дублировать
 - `ScenarioDefinition<TData, TRow>` + `registerScenario()` в registry
-- `import "@/lib/cases/crm-order-tracking"` в page.tsx
+- `import "@/lib/cases/marketplace-card-fill"` в page.tsx
 Decisions:
-- slug: `crm-order-tracking`, icon: `📦`, title: «Отслеживание доставок в CRM»
-- CRM — абстрактная самописная система (не Амос/Битрикс), левый сайдбар + карточка заказа
-- Трекинг-сайт — абстрактный малоизвестный («TrackPost» или «Отслеживание-Доставок.рф»)
-- 3 вкладки браузера: CRM → Трекинг → Мессенджер (канал зависит от клиента)
-- Статусы: «ожидает» → «обработка» → «отслежено»
-- Канал уведомления: Telegram (зелёный чат), Email (синий интерфейс), WhatsApp (зелёный с галочками)
-- Дефолтные статусы CRM: обновляю статус сделки + ETA
-- 30 заказов, 3 входных + 5 выходных колонок
+- slug: `marketplace-card-fill`, icon: `🛒`, title: «Заполнение карточек на маркетплейсе»
+- Маркетплейс: Ozon (реальный, с реальными типами полей — select, number, textarea, tags)
+- Сайт поставщика: абстрактный «TechSupply.ru» (один сайт, все товары там)
+- 2 вкладки браузера: TechSupply.ru + Ozon Seller
+- Вход: 2 колонки (A: Наименование, B: Артикул)
+- Выход: 18 колонок (C-T): точное название, категория (2 уровня select), бренд, описание, страна (select), вес, длина, ширина, высота, цвет (select/multi), материал, модель, ключ.слова (tags), фото, комплектация, гарантия (select), возрастная категория (select), статус заполнения
+- 30 товаров: электроника/офисная техника (ноутбуки, мониторы, МФУ, клавиатуры, роутеры, кресла и т.д.)
+- Статусы: «ожидает» → «обрабатывается» → «заполнено»
+- 12 LocalPhase: idle, supplier_home, supplier_product, supplier_copy, ozon_card, ozon_fill_basic, ozon_fill_category, ozon_fill_attrs, ozon_fill_keywords, ozon_review, ozon_submitted, writing
+- Киллер-фича: визуализация select-полей (выпадающий список, выбор пункта) + этап ozon_review с перепроверкой
 Open questions:
-- Название трекинг-сайта — «TrackPost» или «Отслеживание-Доставок.рф»?
-- Название CRM — «DealFlow» / «SalesPipe» / просто «CRM Система»?
+- (none)
 Success signals:
 - Карточка появляется на лендинге, все 4 шага работают end-to-end
-- Processing показывает 3 вкладки браузера с корректным переключением
+- Processing показывает select-поля Ozon, этап перепроверки
 - `pnpm typecheck` + `pnpm test` + `pnpm build` — чисто
-Next step: `/aif-plan` — создать план реализации кейса
+Next step: `/aif-plan` — создать план реализации
 <!-- aif:active-summary:end -->
 
 ## Sessions

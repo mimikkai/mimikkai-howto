@@ -9,6 +9,7 @@ import "@/lib/cases/threads-comments"
 import "@/lib/cases/email-outreach"
 import "@/lib/cases/ticket-reply"
 import "@/lib/cases/crm-order-tracking"
+import "@/lib/cases/marketplace-card-fill"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 

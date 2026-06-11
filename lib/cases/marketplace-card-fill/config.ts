@@ -1,0 +1,85 @@
+import type { CaseConfig } from "../types"
+
+export const marketplaceCardFillConfig: CaseConfig = {
+  slug: "marketplace-card-fill",
+  chat: {
+    greeting:
+      "Привет! Я помогу создать ИИ-агента на платформе MimikkAi.\n\nВыберите, какого агента вы хотите создать:",
+    presetPrompt: "Я хочу ИИ-агента для заполнения карточек товаров на Ozon",
+    presetPromptDesc:
+      "Агент ищет информацию на сайте поставщика и заполняет карточку товара на маркетплейсе",
+    assistantResponse:
+      "Отлично! Создаю ИИ-агента для заполнения карточек на маркетплейсе.\n\nАгент будет:\n\n• Брать наименование и артикул из таблицы\n• Искать товар на сайте поставщика TechSupply.ru\n• Собирать характеристики, фото, описание\n• Заполнять карточку на Ozon (название, категория, атрибуты, теги)\n• Перепроверять все 18 полей перед отправкой\n• Отправлять карточку на модерацию\n• Записывать результат в таблицу\n\nКонфигурация mim.lua сгенерирована.",
+  },
+  mimLua: {
+    inputColumns: [
+      { id: "A", label: "Наименование", example: "Ноутбук Lenovo ThinkPad E14" },
+      { id: "B", label: "Артикул", example: "TS-NB-001" },
+    ],
+    outputColumns: [
+      { id: "C", label: "Точное название", example: "Ноутбук Lenovo ThinkPad E14 Gen 5 21JNS0RK00" },
+      { id: "D", label: "Категория", example: "Электроника / Ноутбуки" },
+      { id: "E", label: "Бренд", example: "Lenovo" },
+      { id: "F", label: "Описание", example: "Ноутбук для бизнеса с процессором Intel Core i5..." },
+      { id: "G", label: "Страна", example: "Китай" },
+      { id: "H", label: "Вес (кг)", example: "1.6" },
+      { id: "I", label: "Длина (см)", example: "32.4" },
+      { id: "J", label: "Ширина (см)", example: "22.6" },
+      { id: "K", label: "Высота (см)", example: "1.8" },
+      { id: "L", label: "Цвет", example: "Чёрный" },
+      { id: "M", label: "Материал", example: "Пластик / Алюминий" },
+      { id: "N", label: "Модель", example: "21JNS0RK00" },
+      { id: "O", label: "Ключевые слова", example: "ноутбук, lenovo, thinkpad" },
+      { id: "P", label: "Фото", example: "2 фото" },
+      { id: "Q", label: "Комплектация", example: "Ноутбук, зарядное устройство..." },
+      { id: "R", label: "Гарантия", example: "12 месяцев" },
+      { id: "S", label: "Возрастная категория", example: "6+" },
+      { id: "T", label: "Статус", example: "заполнено" },
+    ],
+    promptSteps: [
+      { text: "Возьми наименование и артикул из таблицы", icon: "📋" },
+      { text: "Открой сайт поставщика TechSupply.ru", icon: "🌐" },
+      { text: "Найди товар по артикулу, собери характеристики", icon: "🔍" },
+      { text: "Скопируй данные товара", icon: "📋" },
+      { text: "Открой Ozon Seller и заполни карточку", icon: "✏️" },
+      { text: "Заполни категорию и атрибуты (select-поля)", icon: "📋" },
+      { text: "Добавь ключевые слова, фото, комплектацию", icon: "🏷️" },
+      { text: "Перепроверь все 18 полей перед отправкой", icon: "🔍" },
+      { text: "Отправь карточку на модерацию, запиши результат", icon: "✅" },
+    ],
+    agentTitle: "Заполнение карточек на маркетплейсе",
+    agentDesc: "ИИ-агент для автоматического заполнения карточек товаров на Ozon",
+    promptIntro:
+      "«Ты — автономный агент по заполнению карточек товаров на маркетплейсе. По наименованию и артикулу найди товар на сайте поставщика TechSupply.ru, собери все характеристики, заполни карточку товара на Ozon Seller (выбери категорию, заполни атрибуты, добавь фото и теги), перепроверь все поля и отправь на модерацию.»",
+  },
+  dataTable: {
+    columns: [
+      { id: "A", label: "Наименование", type: "input" },
+      { id: "B", label: "Артикул", type: "input" },
+      { id: "C", label: "Точное название", type: "output" },
+      { id: "D", label: "Категория", type: "output" },
+      { id: "E", label: "Бренд", type: "output" },
+      { id: "F", label: "Описание", type: "output" },
+      { id: "G", label: "Страна", type: "output" },
+      { id: "H", label: "Вес (кг)", type: "output" },
+      { id: "I", label: "Длина (см)", type: "output" },
+      { id: "J", label: "Ширина (см)", type: "output" },
+      { id: "K", label: "Высота (см)", type: "output" },
+      { id: "L", label: "Цвет", type: "output" },
+      { id: "M", label: "Материал", type: "output" },
+      { id: "N", label: "Модель", type: "output" },
+      { id: "O", label: "Ключевые слова", type: "output" },
+      { id: "P", label: "Фото", type: "output" },
+      { id: "Q", label: "Комплектация", type: "output" },
+      { id: "R", label: "Гарантия", type: "output" },
+      { id: "S", label: "Возрастная категория", type: "output" },
+      { id: "T", label: "Статус", type: "output" },
+    ],
+    description:
+      "Тестовые данные для обработки — 30 товаров. ИИ-агент будет искать информацию на сайте поставщика и заполнять карточки на Ozon.",
+    fillButtonText: "Заполнить данные",
+    emptyIcon: "🛒",
+    emptyTitle: "Нет данных",
+    emptyDesc: "Нажмите кнопку ниже, чтобы заполнить таблицу",
+  },
+}
