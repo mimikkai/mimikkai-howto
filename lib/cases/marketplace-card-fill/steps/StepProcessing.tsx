@@ -611,7 +611,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       }))
     }, 19000)
 
-    // ozon_fill_keywords: tags first, then upload photos via Ozon Seller API
+    // ozon_fill_keywords: tags first, then upload photos
     schedule(() => {
       debugPhase("ozon_fill_keywords", nextIdx)
       setBrowser((prev) => ({
@@ -623,9 +623,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       addChat("agent", `🏷️ Добавляю ключевые слова и комплектацию...`)
     }, 20000)
 
-    // Upload photos via Ozon Seller API
+    // Upload photos
     schedule(() => {
-      addChat("agent", `📤 Загружаю фото через Ozon Seller API...`)
+      addChat("agent", `📤 Загружаю фото в карточку товара...`)
       setBrowser((prev) => ({
         ...prev,
         photoState: "uploading",
@@ -659,7 +659,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
         ...prev,
         photoState: "done",
       }))
-      addChat("agent", `✅ Фото загружены через API (${totalPhotos} шт.)`)
+      addChat("agent", `✅ Фото загружены (${totalPhotos} шт.)`)
     }, 20800 + totalPhotos * 700 + 500)
 
     // ozon_review: check all 18 fields
@@ -1626,7 +1626,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                           <div className="text-[9px] text-muted-foreground mb-1.5 flex items-center gap-1.5">
                             Фото товара
                             {browser.photoState === "uploading" && (
-                              <span className="text-amber-600 dark:text-amber-400 animate-pulse">⬆ Загружаю через API...</span>
+                              <span className="text-amber-600 dark:text-amber-400 animate-pulse">⬆ Загружаю фото...</span>
                             )}
                             {browser.photoState === "done" && (
                               <span className="text-emerald-600 dark:text-emerald-400">✓</span>
@@ -1662,7 +1662,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                               </div>
                               <div className="flex items-center gap-2 text-[9px] text-amber-600 dark:text-amber-400">
                                 <span className="animate-pulse">⬆</span>
-                                Ozon Seller API: {browser.photoProgress}/{browser.currentProduct.photoUrls.length}
+                                Загрузка фото: {browser.photoProgress}/{browser.currentProduct.photoUrls.length}
                               </div>
                               <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                                 <div
@@ -1685,7 +1685,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                                 ))}
                               </div>
                               <div className="text-[9px] text-emerald-600 dark:text-emerald-400">
-                                ✅ {browser.currentProduct.photoUrls.length} фото загружено через Ozon Seller API
+                                ✅ {browser.currentProduct.photoUrls.length} фото загружено в карточку
                               </div>
                             </div>
                           )}
@@ -1771,7 +1771,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
                           <div className="flex items-center gap-2 text-[10px]">
                             <span className="text-amber-600 dark:text-amber-400">✓</span>
                             <span className="text-muted-foreground">Фото:</span>
-                            <span className="font-medium">{browser.currentProduct.photoUrls.length} фото (Ozon Seller API)</span>
+                            <span className="font-medium">{browser.currentProduct.photoUrls.length} фото (загружено)</span>
                           </div>
                           <div className="flex items-center gap-2 text-[10px]">
                             <span className="text-amber-600 dark:text-amber-400">✓</span>
