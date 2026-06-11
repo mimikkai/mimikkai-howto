@@ -1,8 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, Fragment } from "react"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { ScenarioStep } from "@/components/scenario-step"
+import { useRouter } from "next/navigation"
 import { listScenarios } from "@/lib/cases/registry"
 import "@/lib/cases/price-search"
 import "@/lib/cases/threads-comments"
@@ -13,87 +11,16 @@ import "@/lib/cases/marketplace-card-fill"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type Step = 1 | 2 | 3 | 4
-
-const STEP_TITLES: Record<Step, string> = {
-  1: "Создание агента",
-  2: "ИИ-агент",
-  3: "Таблица данных",
-  4: "Обработка агентом",
-}
-
-const STEP_ICONS: Record<Step, string> = {
-  1: "💬",
-  2: "🤖",
-  3: "📊",
-  4: "🤖",
-}
-
-const STEP_SLUGS: Record<Step, string> = {
-  1: "chat",
-  2: "ai-agent",
-  3: "data",
-  4: "processing",
-}
-
-const SLUG_TO_STEP: Record<string, Step> = {
-  chat: 1,
-  "ai-agent": 2,
-  data: 3,
-  processing: 4,
-}
-
 export default function Page() {
-  return (
-    <Suspense>
-      <PageContent />
-    </Suspense>
-  )
-}
-
-function PageContent() {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const pathname = usePathname()
-
   const scenarios = listScenarios()
-
-  const caseSlug = searchParams.get("case")
-  const stepSlug = searchParams.get("step")
-  const currentScenario = caseSlug ? scenarios.find((s) => s.meta.slug === caseSlug) ?? null : null
-  const step: Step | null = (SLUG_TO_STEP[stepSlug ?? ""] as Step) || null
-
-  const goToStep = useCallback(
-    (s: Step) => {
-      router.push(`${pathname}?case=${caseSlug}&step=${STEP_SLUGS[s]}`)
-    },
-    [router, pathname, caseSlug]
-  )
-
-  const selectCase = useCallback(
-    (slug: string) => {
-      router.push(`${pathname}?case=${slug}&step=chat`)
-    },
-    [router, pathname]
-  )
-
-  useEffect(() => {
-    if (caseSlug && !stepSlug) {
-      router.replace(`${pathname}?case=${caseSlug}&step=chat`)
-    }
-  }, [caseSlug, stepSlug, router, pathname])
-
-  const isLanding = !caseSlug || !currentScenario
 
   return (
     <div className="flex min-h-svh flex-col">
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2">
-            <span
-              className="flex cursor-pointer items-center gap-2 text-lg font-bold"
-              onClick={() => router.push(pathname)}
-            >
+            <span className="flex items-center gap-2 text-lg font-bold">
               <svg
                 width="24"
                 height="22"
@@ -119,139 +46,65 @@ function PageContent() {
         </div>
       </header>
 
-      {!isLanding && currentScenario && (
-        <nav className="border-b bg-muted/30">
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="flex items-center gap-1 py-2">
-              <button
-                onClick={() => router.push(pathname)}
-                className="mr-2 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60"
-              >
-                ← {currentScenario.meta.title}
-              </button>
-              {([1, 2, 3, 4] as Step[]).map((s) => (
-                <Fragment key={s}>
-                  <div
-                    className={`mx-1 h-px w-6 ${s <= (step ?? 1) ? "bg-primary" : "bg-border"}`}
-                  />
-                  <button
-                    onClick={() =>
-                      step !== null && s <= step ? goToStep(s) : undefined
-                    }
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      step !== null && s === step
-                        ? "bg-primary text-primary-foreground"
-                        : step !== null && s < step
-                          ? "cursor-pointer bg-primary/10 text-primary hover:bg-primary/20"
-                          : "text-muted-foreground"
-                    }`}
-                    disabled={step === null || s > step}
-                  >
-                    <span>{STEP_ICONS[s]}</span>
-                    <span className="hidden sm:inline">{STEP_TITLES[s]}</span>
-                    <span className="sm:hidden">{s}</span>
-                  </button>
-                </Fragment>
-              ))}
-            </div>
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-6">
+        <div className="flex flex-1 flex-col items-center justify-center gap-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Выберите сценарий</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Интерактивное демо — выберите кейс, чтобы увидеть примеры работы
+              ИИ-агента
+            </p>
           </div>
-        </nav>
-      )}
-
-      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-6 py-6">
-        {isLanding ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold">Выберите сценарий</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Интерактивное демо — выберите кейс, чтобы увидеть примеры работы
-                ИИ-агента
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {scenarios.map((scenario) => {
-                const meta = scenario.meta
-                return (
-                  <Card
-                    key={meta.slug}
-                    className={`aspect-square w-48 cursor-pointer transition-all ${
-                      meta.available
-                        ? "hover:border-primary/50 hover:shadow-md"
-                        : "cursor-default opacity-50"
-                    }`}
-                    onClick={() => meta.available && selectCase(meta.slug)}
-                  >
-                    <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                      <span className="text-4xl">{meta.icon}</span>
-                      <span className="text-sm font-semibold">{meta.title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {meta.available ? meta.description : "Скоро"}
-                      </span>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-            <div className="my-2 w-full border-t" />
-            <a
-              href="https://panel.mimikkai.ru"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block w-full max-w-2xl"
-            >
-              <Card className="w-full transition-all hover:border-primary/50 hover:shadow-lg">
-                <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:text-left">
-                  <span className="text-5xl">⚡</span>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-lg font-bold">
-                      Создай свой ИИ-агент
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {scenarios.map((scenario) => {
+              const meta = scenario.meta
+              return (
+                <Card
+                  key={meta.slug}
+                  className={`aspect-square w-48 cursor-pointer transition-all ${
+                    meta.available
+                      ? "hover:border-primary/50 hover:shadow-md"
+                      : "cursor-default opacity-50"
+                  }`}
+                  onClick={() => meta.available && router.push(`/${meta.slug}`)}
+                >
+                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                    <span className="text-4xl">{meta.icon}</span>
+                    <span className="text-sm font-semibold">{meta.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {meta.available ? meta.description : "Скоро"}
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      Перейдите в панель управления MimikkAi, чтобы создать и настроить
-                      собственного ИИ-агента под ваши задачи
-                    </span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
-                      Открыть panel.mimikkai.ru →
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </a>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
-        ) : (
-          <>
-            {step === 1 && (
-              <ScenarioStep
-                slug={caseSlug!}
-                step={1}
-                onComplete={() => goToStep(2)}
-              />
-            )}
-            {step === 2 && (
-              <ScenarioStep
-                slug={caseSlug!}
-                step={2}
-                onBack={() => goToStep(1)}
-                onNext={() => goToStep(3)}
-              />
-            )}
-            {step === 3 && (
-              <ScenarioStep
-                slug={caseSlug!}
-                step={3}
-                onBack={() => goToStep(2)}
-                onNext={() => goToStep(4)}
-              />
-            )}
-            {step === 4 && (
-              <ScenarioStep
-                slug={caseSlug!}
-                step={4}
-                onBack={() => goToStep(3)}
-              />
-            )}
-          </>
-        )}
+          <div className="my-2 w-full border-t" />
+          <a
+            href="https://panel.mimikkai.ru"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group block w-full max-w-2xl"
+          >
+            <Card className="w-full transition-all hover:border-primary/50 hover:shadow-lg">
+              <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:text-left">
+                <span className="text-5xl">⚡</span>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-lg font-bold">
+                    Создай свой ИИ-агент
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Перейдите в панель управления MimikkAi, чтобы создать и настроить
+                    собственного ИИ-агента под ваши задачи
+                  </span>
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
+                    Открыть panel.mimikkai.ru →
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </a>
+        </div>
       </main>
       <footer className="border-t bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-center px-3 py-2 sm:px-6 sm:py-3">

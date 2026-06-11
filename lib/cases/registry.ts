@@ -20,6 +20,10 @@ export function listScenarios(): ScenarioDefinition<unknown, BaseRow>[] {
   return Object.values(registry)
 }
 
+export function listScenarioSlugs(): string[] {
+  return Object.keys(registry)
+}
+
 export function registerScenario(
   slug: string,
   scenario: ScenarioDefinition<unknown, BaseRow>
