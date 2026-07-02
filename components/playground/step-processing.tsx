@@ -130,7 +130,7 @@ function BrowserPageDashboard({ phase, subPhase }: { phase: BrowserPhase; subPha
   )
 }
 
-function BrowserPageForm({ phase, subPhase }: { phase: BrowserPhase; subPhase: number }) {
+function BrowserPageForm({ subPhase }: { subPhase: number }) {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex items-center gap-2 mb-1">
@@ -174,7 +174,7 @@ function BrowserPageForm({ phase, subPhase }: { phase: BrowserPhase; subPhase: n
   )
 }
 
-function BrowserPageSearch({ phase, subPhase }: { phase: BrowserPhase; subPhase: number }) {
+function BrowserPageSearch({ subPhase }: { subPhase: number }) {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex items-center gap-2 mb-1">
@@ -220,7 +220,7 @@ function BrowserPageSearch({ phase, subPhase }: { phase: BrowserPhase; subPhase:
   )
 }
 
-function BrowserPageList({ phase, subPhase }: { phase: BrowserPhase; subPhase: number }) {
+function BrowserPageList({ subPhase }: { subPhase: number }) {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex items-center gap-2 mb-1">
@@ -259,11 +259,11 @@ function BrowserPageContent({ phase, subPhase, page }: { phase: BrowserPhase; su
     case "dashboard":
       return <BrowserPageDashboard phase={phase} subPhase={subPhase} />
     case "form":
-      return <BrowserPageForm phase={phase} subPhase={subPhase} />
+      return <BrowserPageForm subPhase={subPhase} />
     case "search":
-      return <BrowserPageSearch phase={phase} subPhase={subPhase} />
+      return <BrowserPageSearch subPhase={subPhase} />
     case "list":
-      return <BrowserPageList phase={phase} subPhase={subPhase} />
+      return <BrowserPageList subPhase={subPhase} />
   }
 }
 
@@ -282,17 +282,13 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
   const rowsRef = React.useRef(rows)
   const isRunningRef = React.useRef(isRunning)
   const currentIndexRef = React.useRef(currentIndex)
-  const schedulerRef = React.useRef<ReturnType<typeof createScheduler> | null>(null)
-  if (schedulerRef.current === null) {
-    schedulerRef.current = createScheduler({
-      debug: (msg, data) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.debug("[playground:step-processing] scheduler", { msg, ...data })
-        }
-      },
-    })
-  }
-  const scheduler = schedulerRef.current
+  const [scheduler] = React.useState(() => createScheduler({
+    debug: (msg, data) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[playground:step-processing] scheduler", { msg, ...data })
+      }
+    },
+  }))
 
   React.useEffect(() => {
     rowsRef.current = rows

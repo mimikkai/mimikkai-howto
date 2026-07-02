@@ -25,13 +25,6 @@ function coerceString(v: unknown, stage: string, key: string): string {
   return ""
 }
 
-function coerceNumber(v: unknown, stage: string, key: string): number {
-  if (typeof v === "number") return v
-  if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v)
-  console.warn("[playground:parse-mim-lua] coerceNumber fallback", { stage, key, type: typeof v })
-  return 0
-}
-
 function coerceBoolean(v: unknown, stage: string, key: string): boolean {
   if (typeof v === "boolean") return v
   if (v === undefined || v === null) return false
@@ -413,7 +406,7 @@ export function parseMimLua(source: string): MimParseResult {
     const inputColumns = columns.filter((c) => c.kind === "input")
     const outputColumns = columns.filter((c) => c.kind === "output")
 
-    const module: MimModule = {
+    const mimModule: MimModule = {
       name,
       description,
       columns,
@@ -430,7 +423,7 @@ export function parseMimLua(source: string): MimParseResult {
       entryCount: entry.length,
       toolsCount: prompt.tools.length,
     })
-    return { ok: true, module }
+    return { ok: true, module: mimModule }
   } catch (e) {
     const err: MimParseError = {
       message: e instanceof Error ? e.message : String(e),

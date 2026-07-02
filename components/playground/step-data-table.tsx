@@ -79,12 +79,6 @@ export function StepDataTable({ mim, onNext, onBack }: StepDataTableProps) {
     }
   }, [rows, isFilling])
 
-  const statusColor: Record<string, string> = {
-    ожидает: "bg-gray-500/15 text-gray-600 dark:text-gray-400",
-    обработка: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-    готово: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-  }
-
   const getCellValue = (row: MimEntry, colId: string): string => {
     const v = row[colId]
     if (v === null || v === undefined) return ""

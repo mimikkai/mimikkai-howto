@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { MimModule } from "@/lib/playground/types"
 import { StepUpload } from "@/components/playground/step-upload"
@@ -32,8 +31,6 @@ export function PlaygroundContent() {
   const router = useRouter()
   const [step, setStep] = React.useState<Step>(0)
   const [mimModule, setMimModule] = React.useState<MimModule | null>(null)
-  const [filename, setFilename] = React.useState<string>("")
-
   const handleParsed = React.useCallback((mod: MimModule, name: string) => {
     console.info("[playground:content] mim module loaded", {
       name: mod.name,
@@ -42,14 +39,12 @@ export function PlaygroundContent() {
       filename: name,
     })
     setMimModule(mod)
-    setFilename(name)
     setStep(1)
   }, [])
 
   const handleReset = React.useCallback(() => {
     console.debug("[playground:content] reset")
     setMimModule(null)
-    setFilename("")
     setStep(0)
   }, [])
 

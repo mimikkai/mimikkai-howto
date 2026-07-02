@@ -1,71 +1,65 @@
 # Research
 
-Updated: 2026-06-11 18:00
+Updated: 2026-07-02 21:00
 Status: active
 
 ## Active Summary (input for /aif-plan)
 <!-- aif:active-summary:start -->
-Topic: новый кейс «Заполнение карточек товаров для маркетплейсов» (marketplace-card-fill)
-Goal: добавить 6-й активный сценарий в интерактивное демо — ИИ-агент берёт наименование+артикул, ищет товар на сайте поставщика, собирает характеристики, заполняет сложную карточку Ozon (select/number/textarea/tags), перепроверяет и отправляет
+Topic: Playground — раздел загрузки mim.lua (или .zip с mim.lua внутри) с интерактивным демо загруженного сценария
+Goal: Пользователь загружает mim.lua → парсинг через lua-in-js → 4 шага демо (чат, ИИ-агент, таблица, обработка), демонстрирующие компонент MimikkAI
 Constraints:
-- Next.js App Router, Tailwind CSS v4, `prefers-reduced-motion` обязателен
-- Модульная архитектура: `lib/cases/<slug>/` с index, config, data, steps/
-- `createScheduler()` — shared, не дублировать
-- `ScenarioDefinition<TData, TRow>` + `registerScenario()` в registry
-- `import "@/lib/cases/marketplace-card-fill"` в page.tsx
+- Next.js App Router (Next 16.2.6), Tailwind CSS v4, `prefers-reduced-motion` обязательно
+- lua-in-js (npm ^2.2.5) уже установлен — использовать для парсинга mim.lua
+- Архитектура сценариев: `lib/cases/<slug>/` + registry, но playground — runtime, не статичный сценарий
+- `components/step-*.tsx` (chat, mim-lua, data-table, processing) жёстко прибиты к `CASE_CONFIGS[slug]` и конкретным фазам браузера (2992 строки) — НЕ переиспользовать напрямую
+- `lib/cases/scheduler.ts` — shared createScheduler(), можно использовать в playground
+- Кодстайл: без комментариев, verbose DEBUG-логи вида `[playground:xxx] msg {data}`
+- Маршрут: `/playground`
 Decisions:
-- slug: `marketplace-card-fill`, icon: `🛒`, title: «Заполнение карточек на маркетплейсе»
-- Маркетплейс: Ozon (реальный, с реальными типами полей — select, number, textarea, tags)
-- Сайт поставщика: абстрактный «TechSupply.ru» (один сайт, все товары там)
-- 2 вкладки браузера: TechSupply.ru + Ozon Seller
-- Вход: 2 колонки (A: Наименование, B: Артикул)
-- Выход: 18 колонок (C-T): точное название, категория (2 уровня select), бренд, описание, страна (select), вес, длина, ширина, высота, цвет (select/multi), материал, модель, ключ.слова (tags), фото, комплектация, гарантия (select), возрастная категория (select), статус заполнения
-- 30 товаров: электроника/офисная техника (ноутбуки, мониторы, МФУ, клавиатуры, роутеры, кресла и т.д.)
-- Статусы: «ожидает» → «обрабатывается» → «заполнено»
-- 12 LocalPhase: idle, supplier_home, supplier_product, supplier_copy, ozon_card, ozon_fill_basic, ozon_fill_category, ozon_fill_attrs, ozon_fill_keywords, ozon_review, ozon_submitted, writing
-- Киллер-фича: визуализация select-полей (выпадающий список, выбор пункта) + этап ozon_review с перепроверкой
+- Архитектура: Вариант B — свой `/playground` player с упрощёнными runtime step-компонентами, fed распарсенным mim.lua. Не лезть в `step-processing.tsx` (legacy 2992 строки)
+- Парсинг mim.lua: `luainjs.createEnv().parse(src).exec()` → `luainjs.Table` → adapter `toMimModule()` (через `tbl.get("name")`, `tbl.numValues`, `tbl.strValues`, `tbl.keys`, `tbl.toObject()`)
+- `mim.columns` — объект с ключами A..F (не массив). Итерируем через `tbl.keys`/`strValues`. `read_only: true` → output, `false` → input
+- `mim.entry` — массив объектов (`tbl.numValues`), каждый с input-полями
+- `mim.prompt` — строка с YAML-блоками (`key: |`). Наивный split по `^(\\w+):\\s*\\|$` → секции {system_role, task, tools, validation_rules, output_format, special_cases}. Рендерим `task` + `tools.update_entry_fields` как шаги
+- .zip: новая зависимость `fflate` (~3 КБ) — `unzipSync` в браузере
+- Кнопка «Загрузить пример» — предзаполненный mim.lua (анализ отзывов) из вопроса
+- Чат (шаг 1): пользователь печатает `mim.name` → ассистент отвечает `mim.description` → кнопка → шаг 2
+- Шаг 4: текстовый лог «обработка в веб-браузере…» + постепенное заполнение output-колонок через имитацию `update_entry_fields` (построчно, через scheduler)
+- Документация: нет (warn-only)
+- Тесты: да (для парсера mim.lua + adapter)
+- Логирование: verbose
 Open questions:
 - (none)
 Success signals:
-- Карточка появляется на лендинге, все 4 шага работают end-to-end
-- Processing показывает select-поля Ozon, этап перепроверки
-- `pnpm typecheck` + `pnpm test` + `pnpm build` — чисто
-Next step: `/aif-plan` — создать план реализации
+- `/playground` открывается, принимает .lua и .zip с mim.lua внутри
+- Парсинг mim.lua извлекает name, description, columns (input/output), entry, prompt-секции
+- 4 шага демо работают end-to-end на примере «Анализ отзывов клиентов»
+- Шаг 4 построчно заполняет output-колонки с текстовым логом
+- `pnpm typecheck` + `pnpm test` + `pnpm build` — зелёные
+Next step: `/aif-plan full playground` → план реализации
 <!-- aif:active-summary:end -->
 
 ## Sessions
 
-### 2026-06-11 15:30 — новый кейс CRM + трекинг
+### 2026-07-02 21:00 — Разведка playground
 What changed:
-- пользователь выбрал вариант C: отслеживание доставки + обновление клиента
-- CRM — абстрактная самописная, трекинг — абстрактный малоизвестный
-- уведомление клиенту через Telegram/Email/WhatsApp в зависимости от клиента
-- 3 вкладки браузера: CRM, Трекинг, Мессенджер
+- Изучена архитектура mimikkai-howto: `app/[slug]` + `lib/cases/<slug>/` + registry + `components/step-*.tsx`
+- Выбран Вариант B (свой player) — `step-processing.tsx` 2992 строки слишком legacy
+- Изучен API lua-in-js: `createEnv().parse(src).exec()` → `Table` (numValues/strValues/keys, get/set, toObject)
+- Решено: fflate для .zip, наивный YAML-split для mim.prompt, пример «Анализ отзывов» встроенный
 Key notes:
-- флоу обработки: CRM дашборд → карточка заказа → копировать трек → сайт трекинга → результат → обновить CRM → уведомить клиента
-- данные: 30 заказов, A(Клиент)/B(Город)/C(Товар) вход, D(Заказ)/E(Трек)/F(Статус)/G(ETA)/H(Уведомление) выход
-- LocalPhase: crm_dashboard, crm_order_open, crm_copy_track, tracking_home, tracking_typing, tracking_results, crm_update_status, crm_notify_sent
+- `mim.columns` — объект {A:{...}, B:{...}}, не массив
+- `mim.entry` — массив таблиц с input-полями
+- `mim.prompt` — строка с YAML `key: |` блоками
+- `CASE_CONFIGS` в `lib/case-config.tsx` (215 КБ) — статичный, playground обходит его
 Links (paths):
-- lib/cases/email-outreach/ — ближайший референс (Яндекс + сайт компании + почтовый клиент)
-- lib/cases/types.ts — ScenarioDefinition, BaseRow, CaseConfig
-- lib/cases/registry.ts — registerScenario
-- app/page.tsx — import + listScenarios()
-- app/globals.css — keyframes + prefers-reduced-motion
-- lib/cases/scheduler.ts — createScheduler
-
-### 2026-06-10 22:15 — модуляризация сценариев
-What changed:
-- зафиксированы 4 ключевых решения: 4 шага в сценарии, свои данные, нормализация BrowserPhase, конфиг в `lib/cases/<slug>/`
-- зафиксирована целевая структура `lib/cases/<slug>/{index,config,data,steps/}`
-Key notes:
-- главная боль — `step-processing.tsx` (2992 строки) с фазами всех 3 сценариев в одном `BrowserPhase` union
-- `lib/case-config.tsx` совмещает типы, datasets, конфиги — нужно разделить
-- StepChat и StepMimLua уже работают через `CASE_CONFIGS[slug]`, для сценария они становятся локальными копиями (или фабриками)
-- `app/page.tsx` — 300 строк, содержит логику роутинга по step slugs, и лендинг со списком сценариев; роутинг остаётся, лендинг переезжает на `listScenarios()` из registry
-Links (paths):
-- components/step-chat.tsx:20 — точка входа `StepChat`, читает `CASE_CONFIGS[caseSlug]`
-- components/step-mim-lua.tsx:14 — аналогично
-- components/step-data-table.tsx:64 — три ветки через `isEmail/isThreads`
-- components/step-processing.tsx:1262 — точка выбора `processNext` через `isEmail ? ... : isThreads ? ... : ...`
-- lib/case-config.tsx:766 — большой `CASE_CONFIGS` объект
-- app/page.tsx:91 — `PageContent` с роутингом и лендингом
+- app/page.tsx — главная, добавить карточку Playground
+- app/[slug]/scenario-page-content.tsx — образец 4-шаговой навигации
+- lib/cases/types.ts — CaseConfig, MimLuaConfig, ScenarioMeta
+- lib/cases/scheduler.ts — createScheduler (shared)
+- components/step-chat.tsx — образец чата с typing-анимацией
+- components/step-mim-lua.tsx — образец шага 2 (вход/выход/промпт)
+- components/step-data-table.tsx — образец шага 3 (таблица с batch-fill)
+- lib/cases/marketplace-card-fill/steps/StepProcessing.tsx — образец шага 4 (scheduler + chat log)
+- node_modules/lua-in-js/dist/types/Table.d.ts — API Table
+- node_modules/lua-in-js/dist/types/utils.d.ts — LuaType, coerce функции
