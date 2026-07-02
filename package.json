@@ -16,6 +16,8 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
+    "lua-in-js": "^2.2.5",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.5.0",

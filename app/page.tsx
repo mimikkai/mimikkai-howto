@@ -78,6 +78,18 @@ export default function Page() {
                 </Card>
               )
             })}
+            <Card
+              className="aspect-square w-48 cursor-pointer border-primary/30 bg-primary/5 transition-all hover:border-primary/60 hover:shadow-md"
+              onClick={() => router.push("/playground")}
+            >
+              <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <span className="text-4xl">🧪</span>
+                <span className="text-sm font-semibold">Playground</span>
+                <span className="text-xs text-muted-foreground">
+                  Загрузите свой mim.lua и посмотрите демо
+                </span>
+              </CardContent>
+            </Card>
           </div>
           <div className="my-2 w-full border-t" />
           <a
