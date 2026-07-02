@@ -484,7 +484,7 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
     }
   }, [isRunning, isDone, currentIndex, processedCount])
 
-  const visibleCols = mim.columns.slice(0, 5)
+  const inputCols = mim.inputColumns.slice(0, 4)
 
   const phaseLabel: Record<BrowserPhase, string> = {
     idle: "Ожидание",
@@ -605,15 +605,12 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
                 <thead className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--color-border)]">
                   <tr className="border-b text-left text-muted-foreground">
                     <th className="w-8 px-2 py-2 font-medium">#</th>
-                    {visibleCols.map((col) => (
-                      <th
-                        key={col.id}
-                        className={`px-2 py-2 font-medium ${col.kind === "output" ? "hidden lg:table-cell" : ""}`}
-                      >
-                        <span className="font-mono text-[10px] text-muted-foreground">{col.id}</span>{" "}
+                    {inputCols.map((col) => (
+                      <th key={col.id} className="px-2 py-2 font-medium">
                         {col.label}
                       </th>
                     ))}
+                    <th className="px-2 py-2 font-medium">Обработка</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -635,22 +632,12 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
                           <span>{row.id + 1}</span>
                         )}
                       </td>
-                      {visibleCols.map((col) => {
+                      {inputCols.map((col) => {
                         const v = row[col.id]
-                        const isOutput = col.kind === "output"
                         const hasValue = v !== null && v !== undefined && v !== ""
                         return (
-                          <td key={col.id} className={`px-2 py-2 ${isOutput && !hasValue ? "hidden lg:table-cell" : ""}`}>
-                            {isOutput && row.status === "готово" && hasValue ? (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 text-purple-700 dark:text-purple-300 font-semibold text-[11px]">
-                                <span className="text-emerald-600 dark:text-emerald-400 text-xs">✓</span>
-                                {String(v)}
-                              </span>
-                            ) : isOutput && row.status === "готово" && !hasValue ? (
-                              <span className="text-muted-foreground">—</span>
-                            ) : isOutput ? (
-                              <span className="text-muted-foreground/50">—</span>
-                            ) : hasValue ? (
+                          <td key={col.id} className="px-2 py-2">
+                            {hasValue ? (
                               <span className="max-w-[180px] truncate inline-block text-foreground">
                                 {String(v)}
                               </span>
@@ -660,6 +647,20 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
                           </td>
                         )
                       })}
+                      <td className="px-2 py-2">
+                        {row.status === "готово" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 text-purple-700 dark:text-purple-300 font-semibold text-[11px]">
+                            <span className="text-emerald-600 dark:text-emerald-400 text-xs">✓</span>
+                            Выполнена обработка
+                          </span>
+                        ) : row.status === "обработка" ? (
+                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs animate-pulse">
+                            обработка…
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/40 text-xs">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
