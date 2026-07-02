@@ -234,15 +234,9 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   const userTouchedTabRef = React.useRef(userTouchedTab)
 
-  const schedulerRef = React.useRef<ReturnType<typeof createScheduler> | null>(
-    null
-  )
-  if (schedulerRef.current === null) {
-    schedulerRef.current = createScheduler({
-      debug: (msg, data) => console.debug(msg, data),
-    })
-  }
-  const scheduler = schedulerRef.current
+  const [scheduler] = React.useState(() => createScheduler({
+    debug: (msg, data) => console.debug(msg, data),
+  }))
 
   React.useEffect(() => {
     priceDataRef.current = data

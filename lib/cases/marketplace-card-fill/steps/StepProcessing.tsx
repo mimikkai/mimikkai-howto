@@ -200,22 +200,16 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const isRunningRef = React.useRef(isRunning)
   const userTouchedTabRef = React.useRef(userTouchedTab)
 
-  const schedulerRef = React.useRef<ReturnType<typeof createScheduler> | null>(
-    null
-  )
-  if (schedulerRef.current === null) {
-    schedulerRef.current = createScheduler({
-      debug: (msg, data) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.debug("[marketplace-card-fill:processing] scheduler", {
-            msg,
-            ...data,
-          })
-        }
-      },
-    })
-  }
-  const scheduler = schedulerRef.current
+  const [scheduler] = React.useState(() => createScheduler({
+    debug: (msg, data) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[marketplace-card-fill:processing] scheduler", {
+          msg,
+          ...data,
+        })
+      }
+    },
+  }))
 
   React.useEffect(() => {
     tableDataRef.current = tableData
