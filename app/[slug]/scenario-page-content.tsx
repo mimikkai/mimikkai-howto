@@ -11,6 +11,7 @@ import "@/lib/cases/ticket-reply"
 import "@/lib/cases/crm-order-tracking"
 import "@/lib/cases/marketplace-card-fill"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { CreateAgentButton } from "@/components/create-agent-button"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -121,7 +122,10 @@ function ScenarioPageInner() {
               Интерактивное демо
             </span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <CreateAgentButton className="hidden sm:inline-flex" />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

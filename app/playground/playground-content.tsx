@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import { CreateAgentButton } from "@/components/create-agent-button"
 import type { MimModule } from "@/lib/playground/types"
 import { StepUpload } from "@/components/playground/step-upload"
 import { StepChat } from "@/components/playground/step-chat"
@@ -85,6 +86,7 @@ export function PlaygroundContent() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <CreateAgentButton className="hidden sm:inline-flex" />
             {mimModule && (
               <Button variant="outline" size="sm" onClick={handleReset}>
                 ↺ Новый файл

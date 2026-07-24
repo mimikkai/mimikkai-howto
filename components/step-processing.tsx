@@ -1269,6 +1269,8 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     setIsRunning(true)
     isRunningRef.current = true
     setUserTouchedTab(false)
+    setShowStartPrompt(false)
+    setShowCelebration(true)
     addChat("agent", "🚀 Агент запущен.")
     setTimeout(() => processNextRef.current(), 300)
   }, [addChat])
@@ -1323,6 +1325,13 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
 
   const [showCta, setShowCta] = React.useState(false)
   const [ctaCollapsed, setCtaCollapsed] = React.useState(true)
+  const [showStartPrompt, setShowStartPrompt] = React.useState(true)
+  const [showCelebration, setShowCelebration] = React.useState(false)
+
+  React.useEffect(() => {
+    setShowStartPrompt(true)
+    setShowCelebration(false)
+  }, [])
 
   React.useEffect(() => {
     if (isRunning && !showCta) {
@@ -1330,6 +1339,12 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       return () => clearTimeout(timer)
     }
   }, [isRunning, showCta])
+
+  React.useEffect(() => {
+    if (isDone) {
+      setShowCelebration(false)
+    }
+  }, [isDone])
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -1345,6 +1360,70 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             : "ИИ-агент ищет цены через браузер — вводит запрос в Google, переходит на маркетплейсы и записывает результат."}
       </p>
 
+      {showStartPrompt && !isRunning && !isDone && (
+        <div
+          className="fixed top-4 right-4 z-[100] w-[calc(100%-2rem)] max-w-xs"
+          style={{
+            backgroundColor: "rgb(34, 211, 238)",
+            color: "#fff",
+            borderRadius: "12px",
+            padding: "16px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+            border: "2px solid rgb(15, 118, 110)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-xl shrink-0">🚀</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold">Запустите агента</p>
+              <p className="mt-0.5 text-xs" style={{ opacity: 0.9 }}>
+                Нажмите кнопку, чтобы увидеть демо
+              </p>
+              <button
+                onClick={handleStart}
+                className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-95"
+                style={{ color: "rgb(15, 118, 110)" }}
+              >
+                🚀 Запустить агента
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCelebration && isRunning && !isDone && (
+        <div
+          className="fixed top-4 right-4 z-[100] w-[calc(100%-2rem)] max-w-xs"
+          style={{
+            backgroundColor: "rgb(16, 185, 129)",
+            color: "#fff",
+            borderRadius: "12px",
+            padding: "16px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+            border: "2px solid rgb(5, 150, 105)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-xl shrink-0">🎉</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold">Ура! Агент работает!</p>
+              <p className="mt-0.5 text-xs" style={{ opacity: 0.9 }}>
+                Попробуйте создать своего агента на платформе MimikkAi
+              </p>
+              <a
+                href="https://panel.mimikkai.ru"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 block w-full rounded-lg bg-white px-3 py-2 text-center text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-95"
+                style={{ color: "rgb(5, 150, 105)" }}
+              >
+                Создать агента
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <Progress value={progress} className="flex-1" />
         <span className="shrink-0 text-xs text-muted-foreground">
@@ -1357,7 +1436,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
             onClick={isRunning ? handlePause : handleStart}
             className={
               !isRunning
-                ? "shadow-lg shadow-primary/30 transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-primary/40 active:scale-100"
+                ? "border-0 bg-gradient-to-r from-teal-400 to-cyan-500 text-white shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all duration-200 hover:scale-105 hover:shadow-[0_0_32px_rgba(34,211,238,0.6)] hover:brightness-110 active:scale-100"
                 : ""
             }
           >

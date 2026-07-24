@@ -9,6 +9,7 @@ import "@/lib/cases/ticket-reply"
 import "@/lib/cases/crm-order-tracking"
 import "@/lib/cases/marketplace-card-fill"
 import { Card, CardContent } from "@/components/ui/card"
+import { CreateAgentButton } from "@/components/create-agent-button"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function Page() {
@@ -42,7 +43,10 @@ export default function Page() {
               Интерактивное демо
             </span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <CreateAgentButton className="hidden sm:inline-flex" />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -98,20 +102,19 @@ export default function Page() {
             rel="noopener noreferrer"
             className="group block w-full max-w-2xl"
           >
-            <Card className="w-full transition-all hover:border-primary/50 hover:shadow-lg">
-              <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:text-left">
+            <Card className="relative w-full overflow-hidden border-cyan-400/40 transition-all hover:border-cyan-400/70 hover:shadow-[0_0_30px_rgba(34,211,238,0.18)]">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-teal-500/10 via-transparent to-cyan-400/15 opacity-70" />
+              <CardContent className="relative flex flex-col items-center gap-5 p-8 text-center sm:flex-row sm:text-left">
                 <span className="text-5xl">⚡</span>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-lg font-bold">
-                    Создай свой ИИ-агент
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Перейдите в панель управления MimikkAi, чтобы создать и настроить
-                    собственного ИИ-агента под ваши задачи
-                  </span>
-                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
-                    Открыть panel.mimikkai.ru →
-                  </span>
+                <div className="flex flex-1 flex-col items-center gap-3 sm:items-start">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-lg font-bold">Создай свой ИИ-агент</span>
+                    <span className="text-sm text-muted-foreground">
+                      Перейдите в панель управления MimikkAi, чтобы создать и настроить
+                      собственного ИИ-агента под ваши задачи
+                    </span>
+                  </div>
+                  <CreateAgentButton size="lg" className="mt-1 w-full sm:w-auto" />
                 </div>
               </CardContent>
             </Card>

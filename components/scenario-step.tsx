@@ -72,16 +72,19 @@ export function ScenarioStep(props: ScenarioStepProps) {
     <>
       {step === 1 ? (
         <StepComponent
+          key={`${slug}-chat`}
           caseSlug={slug}
           onComplete={(props as StepChatWrapperProps).onComplete}
         />
       ) : step === 4 ? (
         <StepComponent
+          key={`${slug}-processing`}
           caseSlug={slug}
           onBack={(props as StepNavWrapperProps).onBack}
         />
       ) : (
         <StepComponent
+          key={`${slug}-${step}`}
           caseSlug={slug}
           onBack={(props as StepNavWrapperProps).onBack}
           onNext={(props as StepNavWrapperProps).onNext ?? (() => {})}
