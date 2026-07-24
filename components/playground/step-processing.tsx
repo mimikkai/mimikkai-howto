@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { AgentLaunchToast, useAgentLaunchToast } from "@/components/agent-launch-toast"
 import { Progress } from "@/components/ui/progress"
 import { createScheduler } from "@/lib/cases/scheduler"
 import type { MimModule, MimEntry, MimEntryValue } from "@/lib/playground/types"
@@ -273,6 +274,7 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
   )
   const [isRunning, setIsRunning] = React.useState(false)
   const [isDone, setIsDone] = React.useState(false)
+  const agentToast = useAgentLaunchToast(isRunning, isDone)
   const [currentIndex, setCurrentIndex] = React.useState(-1)
   const [logs, setLogs] = React.useState<LogLine[]>([])
   const [browser, setBrowser] = React.useState<BrowserState>(IDLE_BROWSER)
@@ -464,6 +466,7 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
     scheduler.cancelAll()
     scheduler.nextRunId()
     setLogs([{ id: crypto.randomUUID(), role: "system" as const, content: `🚀 Запуск агента «${mim.name}»` }])
+    agentToast.triggerCelebration()
     setIsRunning(true)
     setIsDone(false)
     setCurrentIndex(-1)
@@ -471,7 +474,7 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
     setRows(mim.entry.map((e, i) => ({ ...e, id: i, status: "ожидает" })))
     setBrowser(IDLE_BROWSER)
     setTimeout(() => processNextRef.current(), 300)
-  }, [isRunning, mim.entry, mim.name, scheduler])
+  }, [isRunning, mim.entry, mim.name, scheduler, agentToast])
 
   React.useEffect(() => {
     if (process.env.NODE_ENV !== "production") {
@@ -504,6 +507,17 @@ export function StepProcessing({ mim, onBack }: StepProcessingProps) {
         <Badge variant="outline">Шаг 4 из 4</Badge>
         <h2 className="text-lg font-semibold">Обработка агентом</h2>
       </div>
+
+      <AgentLaunchToast
+        showStartPrompt={agentToast.showStartPrompt}
+        showCelebration={agentToast.showCelebration}
+        isRunning={isRunning}
+        isDone={isDone}
+        toastVisible={agentToast.toastVisible}
+        onStart={handleStart}
+        onCloseStart={agentToast.closeStart}
+        onCloseCelebration={agentToast.closeCelebration}
+      />
 
       {(isRunning || isDone) && (
         <div className="flex items-center gap-3">

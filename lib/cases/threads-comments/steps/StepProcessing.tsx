@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { AgentLaunchToast, useAgentLaunchToast } from "@/components/agent-launch-toast"
 import { THREADS_POSTS } from "../data"
 import type { NormalizedBrowserPhase } from "../../types"
 import { createScheduler } from "../../scheduler"
@@ -111,6 +112,7 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
   const [agentPane, setAgentPane] = React.useState<0 | 1 | 2>(0)
   const [tableFlash, setTableFlash] = React.useState(false)
   const [chatFading, setChatFading] = React.useState(false)
+  const agentToast = useAgentLaunchToast(isRunning, isDone)
 
   const setAgentActivePane = React.useCallback((pane: 0 | 1 | 2) => {
     setAgentPane(pane)
@@ -469,10 +471,11 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
     setIsRunning(true)
     isRunningRef.current = true
     setUserTouchedTab(false)
+    agentToast.triggerCelebration()
     addChat("agent", "🚀 Агент запущен.")
     const t = setTimeout(() => processNextRef.current(), 300)
     scheduler.trackTimer(t)
-  }, [addChat, scheduler])
+  }, [addChat, scheduler, agentToast])
 
   const handlePause = React.useCallback(() => {
     setIsRunning(false)
@@ -506,6 +509,17 @@ export function StepProcessing({ caseSlug, onBack }: StepProcessingProps) {
       <p className="text-sm text-muted-foreground">
         ИИ-агент ищет посты в Threads, генерирует нативные комментарии и публикует их.
       </p>
+
+      <AgentLaunchToast
+        showStartPrompt={agentToast.showStartPrompt}
+        showCelebration={agentToast.showCelebration}
+        isRunning={isRunning}
+        isDone={isDone}
+        toastVisible={agentToast.toastVisible}
+        onStart={handleStart}
+        onCloseStart={agentToast.closeStart}
+        onCloseCelebration={agentToast.closeCelebration}
+      />
 
       <div className="flex items-center gap-4">
         <Progress value={progress} className="flex-1" />
