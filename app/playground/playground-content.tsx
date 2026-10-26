@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { CreateAgentButton } from "@/components/create-agent-button"
+import { SiteHeader } from "@/components/site-header"
 import type { MimModule } from "@/lib/playground/types"
 import { StepUpload } from "@/components/playground/step-upload"
 import { StepChat } from "@/components/playground/step-chat"
@@ -29,7 +30,6 @@ const STEP_ICONS: Record<Exclude<Step, 0>, string> = {
 }
 
 export function PlaygroundContent() {
-  const router = useRouter()
   const [step, setStep] = React.useState<Step>(0)
   const [mimModule, setMimModule] = React.useState<MimModule | null>(null)
   const handleParsed = React.useCallback((mod: MimModule, name: string) => {
@@ -57,45 +57,23 @@ export function PlaygroundContent() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-6 sm:py-3">
-          <div className="flex items-center gap-2">
-            <span
-              className="flex cursor-pointer items-center gap-2 text-lg font-bold"
-              onClick={() => router.push("/")}
-            >
-              <svg
-                width="24"
-                height="22"
-                viewBox="0 0 32 30"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="shrink-0"
-              >
-                <path
-                  d="M31.8496 0.150391V24.3906L26.292 29.8496H23.6797V16.7969L23.4219 17.0605L16.1504 24.4971V21.7861L26.2031 11.7402V26.6143L26.4609 26.3477L29.2842 23.4297L29.3262 23.3867V3.9668L29.0703 4.22461L16.1504 17.2217V13.5098L29.2383 0.150391H31.8496ZM2.76172 0.150391L15.8496 13.5098V17.2217L2.92969 4.22461L2.67383 3.9668V23.3867L2.71582 23.4297L5.53906 26.3477L5.79688 26.6143V11.7402L15.8496 21.7861V24.4971L8.57812 17.0605L8.32031 16.7969V29.8496H5.70801L0.150391 24.3906V0.150391H2.76172Z"
-                  fill="currentColor"
-                  stroke="currentColor"
-                  strokeWidth="0.3"
-                />
-              </svg>
-              MimikkAi
-            </span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              Playground
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CreateAgentButton className="hidden sm:inline-flex" />
-            {mimModule && (
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                ↺ Новый файл
-              </Button>
-            )}
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <SiteHeader label="Playground">
+        {step === 0 && (
+          <Link
+            href="/"
+            className="text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
+          >
+            Все сценарии
+          </Link>
+        )}
+        <CreateAgentButton className="hidden sm:inline-flex" />
+        {mimModule && (
+          <Button variant="outline" size="sm" onClick={handleReset}>
+            ↺ Новый файл
+          </Button>
+        )}
+        <ThemeToggle />
+      </SiteHeader>
 
       {step > 0 && mimModule && (
         <nav className="border-b bg-muted/30">
